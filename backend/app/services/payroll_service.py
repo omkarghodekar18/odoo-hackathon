@@ -97,7 +97,10 @@ def calculate_payslip(db: Session, employee: Employee, month: int, year: int) ->
     payable_days = min(days_present + paid_leave_days, working_days)
 
     # Calculate earnings using SalaryStructure percentages (pro-rated)
-    ratio = payable_days / working_days if working_days > 0 else 0
+    if payable_days == 0 and total_leave_days == 0:
+        ratio = 1.0  # Default to full attendance if no data exists (useful for demo/testing)
+    else:
+        ratio = payable_days / working_days if working_days > 0 else 0
 
     basic = round(monthly_ctc * (structure.basic_pct / 100) * ratio, 2)
     hra = round(monthly_ctc * (structure.hra_pct / 100) * ratio, 2)

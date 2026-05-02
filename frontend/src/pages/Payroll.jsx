@@ -161,6 +161,10 @@ export default function Payroll() {
     const grossLine = (d.salary_computation || []).find(l => l.name === 'Gross');
     const deductions = (d.salary_computation || []).filter(l => l.is_deduction);
     const netLine = (d.salary_computation || []).find(l => l.name === 'Net Amount');
+    
+    // Split deductions for UI layout
+    const pfDeductions = deductions.filter(l => l.name.includes('PF'));
+    const taxDeductions = deductions.filter(l => !l.name.includes('PF'));
 
     return (
       <div className="page">
@@ -229,48 +233,91 @@ export default function Payroll() {
           )}
 
           {payslipTab === 'salary' && (
-            <div className="table-card">
-              <table className="table">
-                <thead><tr><th>Rule Name</th><th style={{textAlign:'center'}}>Rate %</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
-                <tbody>
-                  {/* Earnings */}
-                  {earnings.map((line,i) => (
-                    <tr key={`e-${i}`}>
-                      <td>{line.name}</td>
-                      <td style={{textAlign:'center'}}>{line.rate_pct}</td>
-                      <td style={{textAlign:'right', fontWeight: 500}}>₹ {line.amount.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
-                    </tr>
-                  ))}
+            <>
+              {/* Summary Row */}
+              <div className="sal-summary" style={{marginTop:'1.25rem'}}>
+                <div className="sal-summary__card">
+                  <span>Net Pay</span>
+                  <strong>₹{netLine?.amount?.toLocaleString(undefined,{minimumFractionDigits:2})}</strong>
+                  <small>Take Home</small>
+                </div>
+                <div className="sal-summary__card">
+                  <span>Gross Wage</span>
+                  <strong>₹{grossLine?.amount?.toLocaleString(undefined,{minimumFractionDigits:2})}</strong>
+                  <small>Before Deductions</small>
+                </div>
+                <div className="sal-summary__card sal-summary__card--info">
+                  <span>Employer Cost:</span>
+                  <strong>₹{d.employer_cost?.toLocaleString(undefined,{minimumFractionDigits:2})}</strong>
+                </div>
+              </div>
 
-                  {/* Gross row */}
-                  {grossLine && (
-                    <tr className="pr-gross-row">
-                      <td><strong>{grossLine.name}</strong></td>
-                      <td style={{textAlign:'center'}}>{grossLine.rate_pct}</td>
-                      <td style={{textAlign:'right'}}><strong>₹ {grossLine.amount.toLocaleString(undefined,{minimumFractionDigits:2})}</strong></td>
-                    </tr>
-                  )}
+              <div className="sal-grid" style={{marginTop:'1.25rem'}}>
+              {/* Left: Salary Components */}
+              <div className="sal-block">
+                <h4 style={{marginBottom:'1rem',color:'#1e293b'}}>Salary Components</h4>
+                <table className="sal-table">
+                  <thead>
+                    <tr><th>Component</th><th style={{textAlign:'right'}}>₹ / Month</th><th style={{textAlign:'right'}}>%</th></tr>
+                  </thead>
+                  <tbody>
+                    {earnings.map((line,i) => (
+                      <tr key={`e-${i}`}>
+                        <td>
+                          <strong>{line.name}</strong>
+                          {line.description && <span className="sal-table__desc">{line.description}</span>}
+                        </td>
+                        <td className="sal-table__amt" style={{textAlign:'right'}}>₹{line.amount.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
+                        <td className="sal-table__pct" style={{textAlign:'right', color:'#0d9488'}}>{line.rate_pct}{line.rate_pct !== '-' ? ' %' : ''}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-                  {/* Deductions */}
-                  {deductions.map((line,i) => (
-                    <tr key={`d-${i}`}>
-                      <td style={{color:'#ef4444'}}>{line.name}</td>
-                      <td style={{textAlign:'center'}}>{line.rate_pct}</td>
-                      <td style={{textAlign:'right', color:'#ef4444', fontWeight: 500}}>- ₹ {line.amount.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
-                    </tr>
-                  ))}
+              {/* Right: PF + Tax */}
+              <div className="sal-right">
+                <div className="sal-block">
+                  <h4 style={{marginBottom:'1rem',color:'#1e293b'}}>Provident Fund (PF) Contribution</h4>
+                  <table className="sal-table">
+                    <thead>
+                      <tr><th>Type</th><th style={{textAlign:'right'}}>₹ / Month</th><th style={{textAlign:'right'}}>%</th></tr>
+                    </thead>
+                    <tbody>
+                      {pfDeductions.map((line,i) => (
+                        <tr key={`pf-${i}`}>
+                          <td>
+                            <strong>{line.name}</strong>
+                            {line.description && <span className="sal-table__desc">{line.description}</span>}
+                          </td>
+                          <td className="sal-table__amt" style={{textAlign:'right'}}>₹{line.amount.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
+                          <td className="sal-table__pct" style={{textAlign:'right', color:'#0d9488'}}>{line.rate_pct}{line.rate_pct !== '-' ? ' %' : ''}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
-                  {/* Net Amount */}
-                  {netLine && (
-                    <tr className="pr-net-row">
-                      <td><strong>{netLine.name}</strong></td>
-                      <td style={{textAlign:'center'}}>{netLine.rate_pct}</td>
-                      <td style={{textAlign:'right'}}><strong>₹ {netLine.amount.toLocaleString(undefined,{minimumFractionDigits:2})}</strong></td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                <div className="sal-block" style={{ marginTop: '1.5rem' }}>
+                  <h4 style={{marginBottom:'1rem',color:'#1e293b'}}>Tax Deductions</h4>
+                  <table className="sal-table">
+                    <thead><tr><th>Tax</th><th style={{textAlign:'right'}}>₹ / Month</th></tr></thead>
+                    <tbody>
+                      {taxDeductions.map((line,i) => (
+                        <tr key={`tax-${i}`}>
+                          <td>
+                            <strong>{line.name}</strong>
+                            {line.description && <span className="sal-table__desc">{line.description}</span>}
+                          </td>
+                          <td className="sal-table__amt" style={{textAlign:'right'}}>₹{line.amount.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              </div>
+            </>
           )}
         </div>
       </div>

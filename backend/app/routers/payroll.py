@@ -339,27 +339,39 @@ def get_payslip_detail(
             "amount": 0,
         })
 
-    # Salary computation lines with rate percentages
+    # Fetch salary structure percentages
+    from app.models.salary_structure import SalaryStructure
+    struct = db.query(SalaryStructure).filter(SalaryStructure.employee_id == slip.employee_id).first()
+    basic_pct = struct.basic_pct if struct else 50.0
+    hra_pct = struct.hra_pct if struct else 20.0
+    sa_pct = struct.standard_allowance_pct if struct else 5.67
+    pb_pct = struct.performance_bonus_pct if struct else 8.33
+    lta_pct = struct.lta_pct if struct else 8.33
+    fa_pct = struct.fixed_allowance_pct if struct else 7.67
+    emp_pf_pct = struct.employee_pf_pct if struct else 12.0
+    empr_pf_pct = struct.employer_pf_pct if struct else 12.0
+
+    # Salary computation lines with rate percentages and descriptions
     salary_computation = [
-        {"name": "Basic Salary", "rate_pct": 100, "amount": slip.basic_salary, "is_deduction": False},
-        {"name": "House Rent Allowance", "rate_pct": 100, "amount": slip.hra, "is_deduction": False},
-        {"name": "Standard Allowance", "rate_pct": 100, "amount": slip.standard_allowance or 0, "is_deduction": False},
-        {"name": "Performance Bonus", "rate_pct": 100, "amount": slip.performance_bonus or 0, "is_deduction": False},
-        {"name": "Leave Travel Allowance", "rate_pct": 100, "amount": slip.lta or 0, "is_deduction": False},
-        {"name": "Fixed Allowance", "rate_pct": 100, "amount": slip.fixed_allowance or 0, "is_deduction": False},
-        {"name": "Gross", "rate_pct": 100, "amount": slip.gross_salary, "is_deduction": False},
-        {"name": "PF Employee", "rate_pct": 100, "amount": slip.pf_employee or 0, "is_deduction": True},
-        {"name": "PF Employer", "rate_pct": 100, "amount": slip.pf_employer or 0, "is_deduction": True},
+        {"name": "Basic Salary", "rate_pct": basic_pct, "amount": slip.basic_salary, "is_deduction": False, "description": "Define Basic salary from company cost compute it based on monthly wages."},
+        {"name": "House Rent Allowance", "rate_pct": hra_pct, "amount": slip.hra, "is_deduction": False, "description": "HRA provided to employees 50% of the basic salary."},
+        {"name": "Standard Allowance", "rate_pct": sa_pct, "amount": slip.standard_allowance or 0, "is_deduction": False, "description": "A standard allowance is a predetermined, fixed amount provided to employee as part of their salary."},
+        {"name": "Performance Bonus", "rate_pct": pb_pct, "amount": slip.performance_bonus or 0, "is_deduction": False, "description": "Variable amount paid during payroll. The value defined by the company and calculated as a % of the basic salary."},
+        {"name": "Leave Travel Allowance", "rate_pct": lta_pct, "amount": slip.lta or 0, "is_deduction": False, "description": "LTA is paid by the company to employees to cover their travel expenses, and calculated as a % of the basic salary."},
+        {"name": "Fixed Allowance", "rate_pct": fa_pct, "amount": slip.fixed_allowance or 0, "is_deduction": False, "description": "Fixed allowance portion of wages is determined after calculating all salary components."},
+        {"name": "Gross", "rate_pct": 100, "amount": slip.gross_salary, "is_deduction": False, "description": ""},
+        {"name": "PF Employee", "rate_pct": emp_pf_pct, "amount": slip.pf_employee or 0, "is_deduction": True, "description": "PF is calculated based on the basic salary."},
+        {"name": "PF Employer", "rate_pct": empr_pf_pct, "amount": slip.pf_employer or 0, "is_deduction": True, "description": "PF is calculated based on the basic salary."},
     ]
     if slip.professional_tax > 0:
-        salary_computation.append({"name": "Professional Tax", "rate_pct": 100, "amount": slip.professional_tax, "is_deduction": True})
+        salary_computation.append({"name": "Professional Tax", "rate_pct": "-", "amount": slip.professional_tax, "is_deduction": True, "description": "Professional Tax deducted from the Gross salary."})
     if slip.income_tax > 0:
-        salary_computation.append({"name": "Income Tax", "rate_pct": 100, "amount": slip.income_tax, "is_deduction": True})
+        salary_computation.append({"name": "Income Tax", "rate_pct": "-", "amount": slip.income_tax, "is_deduction": True, "description": "Income Tax deducted from the Gross salary."})
     if slip.other_deductions > 0:
-        salary_computation.append({"name": "Other Deductions", "rate_pct": 100, "amount": slip.other_deductions, "is_deduction": True})
+        salary_computation.append({"name": "Other Deductions", "rate_pct": "-", "amount": slip.other_deductions, "is_deduction": True, "description": "Other manual deductions."})
 
     # Net Amount line
-    salary_computation.append({"name": "Net Amount", "rate_pct": 100, "amount": slip.net_pay, "is_deduction": False})
+    salary_computation.append({"name": "Net Amount", "rate_pct": "-", "amount": slip.net_pay, "is_deduction": False, "description": ""})
 
     return {
         "id": slip.id,
