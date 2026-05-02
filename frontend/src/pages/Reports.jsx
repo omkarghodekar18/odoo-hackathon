@@ -10,7 +10,7 @@ const fmt = (n) => `\u20b9 ${(n || 0).toLocaleString('en-IN', { minimumFractionD
 
 export default function Reports() {
   const { hasRole, company } = useAuth();
-  if (!hasRole('admin', 'payroll_officer')) return <Navigate to="/dashboard" replace />;
+  if (!hasRole('admin', 'payroll_officer')) return <Navigate to="/employees" replace />;
 
   const [employees, setEmployees]     = useState([]);
   const [selectedEmpId, setSelectedEmpId] = useState('');

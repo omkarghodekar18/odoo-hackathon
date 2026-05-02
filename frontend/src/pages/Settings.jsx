@@ -10,7 +10,7 @@ export default function Settings() {
 
   // Route guard: only admin can access Settings
   if (!hasRole('admin')) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/employees" replace />;
   }
 
   const [users, setUsers] = useState([]);

@@ -10,7 +10,7 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 
 export default function Payroll() {
   const { hasRole } = useAuth();
-  if (!hasRole('admin', 'payroll_officer')) return <Navigate to="/dashboard" replace />;
+  if (!hasRole('admin', 'payroll_officer')) return <Navigate to="/employees" replace />;
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(true);
