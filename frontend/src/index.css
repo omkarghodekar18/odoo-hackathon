@@ -1373,7 +1373,13 @@ a:hover { text-decoration: underline; }
 
 /* Total and net rows in tables */
 .pr-total-row td { border-top: 2px solid var(--border); font-weight: 600; background: var(--bg-tertiary); }
-.pr-net-row td { background: linear-gradient(135deg, #ecfdf5, #f0fdfa); font-weight: 700; font-size: 1rem; color: var(--success); }
+.pr-gross-row td { border-top: 2px solid var(--border); border-bottom: 2px solid var(--border); font-weight: 700; background: var(--bg-tertiary); }
+.pr-net-row td { background: linear-gradient(135deg, #ecfdf5, #f0fdfa); font-weight: 700; font-size: 1rem; color: var(--success); border-top: 2px solid var(--border); }
+
+/* Button variants */
+.btn--accent { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; }
+.btn--accent:hover { background: linear-gradient(135deg, #7c3aed, #6d28d9); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(139,92,246,0.3); }
+.btn--sm { padding: 0.4rem 0.85rem; font-size: 0.8rem; }
 
 /* Note below table */
 .pr-note {

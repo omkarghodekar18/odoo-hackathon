@@ -33,14 +33,16 @@ class PayslipResponse(BaseModel):
     # Earnings
     basic_salary: float
     hra: float
-    conveyance: float
-    medical: float
-    special_allowance: float
+    standard_allowance: float = 0.0
+    performance_bonus: float = 0.0
+    lta: float = 0.0
+    fixed_allowance: float = 0.0
     gross_salary: float
     employer_cost: float = 0.0
 
     # Deductions
-    pf_deduction: float
+    pf_employee: float = 0.0
+    pf_employer: float = 0.0
     professional_tax: float
     income_tax: float
     other_deductions: float
@@ -61,9 +63,14 @@ class PayslipResponse(BaseModel):
 
 
 class PayslipUpdate(BaseModel):
-    special_allowance: Optional[float] = None
     other_deductions: Optional[float] = None
     income_tax: Optional[float] = None
+
+
+class PayslipCreate(BaseModel):
+    """For creating an individual payslip within an existing payrun."""
+    payrun_id: int
+    employee_id: int
 
 
 class PayrunDetailResponse(PayrunResponse):
@@ -80,6 +87,7 @@ class WorkedDayLine(BaseModel):
 
 class SalaryComputationLine(BaseModel):
     name: str
+    rate_pct: float = 100
     amount: float
     is_deduction: bool = False
 

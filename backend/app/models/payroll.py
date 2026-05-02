@@ -46,20 +46,22 @@ class Payslip(Base):
     employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
     status = Column(SQLEnum(PayslipStatus), default=PayslipStatus.DRAFT)
 
-    # Earnings
+    # Earnings (computed from SalaryStructure percentages of CTC)
     basic_salary = Column(Float, default=0.0)
-    hra = Column(Float, default=0.0)          # House Rent Allowance (40% of basic)
-    conveyance = Column(Float, default=1600.0)
-    medical = Column(Float, default=1250.0)
-    special_allowance = Column(Float, default=0.0)
+    hra = Column(Float, default=0.0)                  # House Rent Allowance
+    standard_allowance = Column(Float, default=0.0)
+    performance_bonus = Column(Float, default=0.0)
+    lta = Column(Float, default=0.0)                  # Leave Travel Allowance
+    fixed_allowance = Column(Float, default=0.0)
     gross_salary = Column(Float, default=0.0)
 
     # Employer cost (gross + employer PF)
     employer_cost = Column(Float, default=0.0)
 
     # Deductions
-    pf_deduction = Column(Float, default=0.0)       # 12% of basic
-    professional_tax = Column(Float, default=0.0)    # Slab-based
+    pf_employee = Column(Float, default=0.0)          # Employee PF contribution
+    pf_employer = Column(Float, default=0.0)          # Employer PF contribution
+    professional_tax = Column(Float, default=0.0)     # Slab-based
     income_tax = Column(Float, default=0.0)
     other_deductions = Column(Float, default=0.0)
     total_deductions = Column(Float, default=0.0)

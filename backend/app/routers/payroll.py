@@ -1,18 +1,19 @@
 import calendar
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from datetime import date
 from app.database import get_db
 from app.models.user import User
 from app.models.employee import Employee
 from app.models.payroll import Payrun, Payslip, PayrunStatus, PayslipStatus
-from app.schemas.payroll import PayrunCreate, PayslipUpdate
+from app.schemas.payroll import PayrunCreate, PayslipUpdate, PayslipCreate
 from app.utils.security import get_current_user
 from app.utils.permissions import require_roles
 from app.services.payroll_service import (
     create_payrun, compute_payslip, validate_payslip,
     cancel_payslip, reset_payslip_to_draft, validate_payrun,
+    create_single_payslip,
 )
 
 router = APIRouter(prefix="/payroll", tags=["Payroll"])
@@ -38,13 +39,22 @@ def get_payroll_dashboard(
 
     # ── Warnings ──
     warnings = []
-    # Employees without bank account (placeholder — field doesn't exist yet)
+
+    # Employees without bank account
+    no_bank_count = db.query(Employee).filter(
+        Employee.company_id == company_id,
+        or_(
+            Employee.bank_account_number == None,
+            Employee.bank_account_number == "",
+        )
+    ).count()
     warnings.append({
         "type": "bank_account",
         "message": "Employee without Bank A/C",
-        "count": 0,
+        "count": no_bank_count,
     })
-    # Employees without manager (placeholder)
+
+    # Employees without manager (placeholder — manager field doesn't exist yet)
     warnings.append({
         "type": "manager",
         "message": "Employee without Manager",
@@ -53,7 +63,6 @@ def get_payroll_dashboard(
 
     # ── Pending payruns (months without a payrun this year) ──
     today = date.today()
-    company_users = [u.id for u in db.query(User.id).filter(User.company_id == company_id).all()]
     existing_payruns = db.query(Payrun).filter(
         Payrun.company_id == company_id,
         Payrun.year == today.year,
@@ -184,12 +193,14 @@ def get_payrun_detail(
             "status": s.status.value if s.status else "draft",
             "basic_salary": s.basic_salary,
             "hra": s.hra,
-            "conveyance": s.conveyance,
-            "medical": s.medical,
-            "special_allowance": s.special_allowance,
+            "standard_allowance": s.standard_allowance or 0,
+            "performance_bonus": s.performance_bonus or 0,
+            "lta": s.lta or 0,
+            "fixed_allowance": s.fixed_allowance or 0,
             "gross_salary": s.gross_salary,
             "employer_cost": s.employer_cost or 0,
-            "pf_deduction": s.pf_deduction,
+            "pf_employee": s.pf_employee or 0,
+            "pf_employer": s.pf_employer or 0,
             "professional_tax": s.professional_tax,
             "income_tax": s.income_tax,
             "other_deductions": s.other_deductions,
@@ -261,6 +272,19 @@ def mark_payrun_paid(
 
 # ── Individual Payslip operations ──────────────────────────────────────────────
 
+@router.post("/payslip")
+def create_new_payslip(
+    data: PayslipCreate,
+    current_user: User = Depends(require_roles("admin", "payroll_officer")),
+    db: Session = Depends(get_db),
+):
+    """Create a single payslip for an employee within an existing payrun."""
+    payslip, error = create_single_payslip(db, data.payrun_id, data.employee_id)
+    if error:
+        raise HTTPException(status_code=400, detail=error)
+    return {"message": "Payslip created", "id": payslip.id}
+
+
 @router.get("/payslip/{payslip_id}")
 def get_payslip_detail(
     payslip_id: int,
@@ -280,14 +304,15 @@ def get_payslip_detail(
 
     # Worked days breakdown
     worked_days = []
-    attendance_amount = round((slip.days_present or 0) / slip.working_days * emp.basic_salary, 2) if slip.working_days > 0 else 0
+    ctc = emp.basic_salary or 0
+    attendance_amount = round((slip.days_present or 0) / slip.working_days * ctc, 2) if slip.working_days > 0 else 0
     worked_days.append({
         "name": "Attendance",
         "days": slip.days_present or 0,
         "amount": attendance_amount,
     })
     if (slip.paid_leave_days or 0) > 0:
-        leave_amount = round(slip.paid_leave_days / slip.working_days * emp.basic_salary, 2) if slip.working_days > 0 else 0
+        leave_amount = round(slip.paid_leave_days / slip.working_days * ctc, 2) if slip.working_days > 0 else 0
         worked_days.append({
             "name": "Paid Time Off",
             "days": slip.paid_leave_days,
@@ -300,23 +325,27 @@ def get_payslip_detail(
             "amount": 0,
         })
 
-    # Salary computation lines
+    # Salary computation lines with rate percentages
     salary_computation = [
-        {"name": "Basic Salary", "amount": slip.basic_salary, "is_deduction": False},
-        {"name": "House Rent Allowance (HRA)", "amount": slip.hra, "is_deduction": False},
-        {"name": "Conveyance Allowance", "amount": slip.conveyance, "is_deduction": False},
-        {"name": "Medical Allowance", "amount": slip.medical, "is_deduction": False},
+        {"name": "Basic Salary", "rate_pct": 100, "amount": slip.basic_salary, "is_deduction": False},
+        {"name": "House Rent Allowance", "rate_pct": 100, "amount": slip.hra, "is_deduction": False},
+        {"name": "Standard Allowance", "rate_pct": 100, "amount": slip.standard_allowance or 0, "is_deduction": False},
+        {"name": "Performance Bonus", "rate_pct": 100, "amount": slip.performance_bonus or 0, "is_deduction": False},
+        {"name": "Leave Travel Allowance", "rate_pct": 100, "amount": slip.lta or 0, "is_deduction": False},
+        {"name": "Fixed Allowance", "rate_pct": 100, "amount": slip.fixed_allowance or 0, "is_deduction": False},
+        {"name": "Gross", "rate_pct": 100, "amount": slip.gross_salary, "is_deduction": False},
+        {"name": "PF Employee", "rate_pct": 100, "amount": slip.pf_employee or 0, "is_deduction": True},
+        {"name": "PF Employer", "rate_pct": 100, "amount": slip.pf_employer or 0, "is_deduction": True},
     ]
-    if slip.special_allowance > 0:
-        salary_computation.append({"name": "Special Allowance", "amount": slip.special_allowance, "is_deduction": False})
-    salary_computation.append({"name": "Gross Salary", "amount": slip.gross_salary, "is_deduction": False})
-    salary_computation.append({"name": "Provident Fund (12%)", "amount": slip.pf_deduction, "is_deduction": True})
     if slip.professional_tax > 0:
-        salary_computation.append({"name": "Professional Tax", "amount": slip.professional_tax, "is_deduction": True})
+        salary_computation.append({"name": "Professional Tax", "rate_pct": 100, "amount": slip.professional_tax, "is_deduction": True})
     if slip.income_tax > 0:
-        salary_computation.append({"name": "Income Tax", "amount": slip.income_tax, "is_deduction": True})
+        salary_computation.append({"name": "Income Tax", "rate_pct": 100, "amount": slip.income_tax, "is_deduction": True})
     if slip.other_deductions > 0:
-        salary_computation.append({"name": "Other Deductions", "amount": slip.other_deductions, "is_deduction": True})
+        salary_computation.append({"name": "Other Deductions", "rate_pct": 100, "amount": slip.other_deductions, "is_deduction": True})
+
+    # Net Amount line
+    salary_computation.append({"name": "Net Amount", "rate_pct": 100, "amount": slip.net_pay, "is_deduction": False})
 
     return {
         "id": slip.id,
@@ -414,16 +443,13 @@ def update_payslip(
     slip = db.query(Payslip).filter(Payslip.id == payslip_id).first()
     if not slip:
         raise HTTPException(status_code=404, detail="Payslip not found")
-    if data.special_allowance is not None:
-        slip.special_allowance = data.special_allowance
-        slip.gross_salary = slip.basic_salary + slip.hra + slip.conveyance + slip.medical + data.special_allowance
     if data.other_deductions is not None:
         slip.other_deductions = data.other_deductions
     if data.income_tax is not None:
         slip.income_tax = data.income_tax
-    slip.total_deductions = slip.pf_deduction + slip.professional_tax + slip.income_tax + slip.other_deductions
+    slip.total_deductions = (slip.pf_employee or 0) + slip.professional_tax + slip.income_tax + slip.other_deductions
     slip.net_pay = slip.gross_salary - slip.total_deductions
-    slip.employer_cost = slip.gross_salary + round(slip.basic_salary * 0.12, 2)
+    slip.employer_cost = slip.gross_salary + (slip.pf_employer or 0)
     db.commit()
     return {"message": "Payslip updated", "net_pay": slip.net_pay}
 
@@ -449,12 +475,14 @@ def get_my_payslips(
             "status": s.status.value if s.status else (payrun.status.value if payrun else ""),
             "basic_salary": s.basic_salary,
             "hra": s.hra,
-            "conveyance": s.conveyance,
-            "medical": s.medical,
-            "special_allowance": s.special_allowance,
+            "standard_allowance": s.standard_allowance or 0,
+            "performance_bonus": s.performance_bonus or 0,
+            "lta": s.lta or 0,
+            "fixed_allowance": s.fixed_allowance or 0,
             "gross_salary": s.gross_salary,
             "employer_cost": s.employer_cost or 0,
-            "pf_deduction": s.pf_deduction,
+            "pf_employee": s.pf_employee or 0,
+            "pf_employer": s.pf_employer or 0,
             "professional_tax": s.professional_tax,
             "income_tax": s.income_tax,
             "other_deductions": s.other_deductions,
@@ -467,3 +495,38 @@ def get_my_payslips(
             "unpaid_leave_days": s.unpaid_leave_days or 0,
         })
     return result
+
+
+# ── Employees list for new payslip dropdown ────────────────────────────────────
+
+@router.get("/payrun/{payrun_id}/available-employees")
+def get_available_employees(
+    payrun_id: int,
+    current_user: User = Depends(require_roles("admin", "payroll_officer")),
+    db: Session = Depends(get_db),
+):
+    """Get employees that don't already have a payslip in this payrun."""
+    payrun = db.query(Payrun).filter(Payrun.id == payrun_id).first()
+    if not payrun:
+        raise HTTPException(status_code=404, detail="Payrun not found")
+
+    # Get employee IDs already in this payrun
+    existing_emp_ids = [
+        s.employee_id for s in
+        db.query(Payslip.employee_id).filter(Payslip.payrun_id == payrun_id).all()
+    ]
+
+    # Get company employees not already in the payrun
+    query = db.query(Employee).filter(Employee.company_id == current_user.company_id)
+    if existing_emp_ids:
+        query = query.filter(Employee.id.notin_(existing_emp_ids))
+
+    employees = query.all()
+    return [
+        {
+            "id": e.id,
+            "name": f"{e.first_name} {e.last_name}",
+            "emp_code": e.emp_code,
+        }
+        for e in employees
+    ]

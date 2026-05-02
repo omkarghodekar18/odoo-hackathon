@@ -6,6 +6,7 @@ from app.models.employee import Employee
 from app.models.attendance import Attendance, AttendanceStatus
 from app.models.leave import LeaveRequest, LeaveStatus, LeaveType, LeaveBalance
 from app.models.payroll import Payrun, Payslip, PayrunStatus, PayslipStatus
+from app.models.salary_structure import SalaryStructure
 
 
 def get_professional_tax(gross_salary: float) -> float:
@@ -20,13 +21,34 @@ def get_professional_tax(gross_salary: float) -> float:
         return 200
 
 
+def _get_or_create_salary_structure(db: Session, employee_id: int) -> SalaryStructure:
+    """Fetch salary structure for employee, or create one with defaults."""
+    structure = db.query(SalaryStructure).filter(
+        SalaryStructure.employee_id == employee_id
+    ).first()
+    if not structure:
+        structure = SalaryStructure(employee_id=employee_id)
+        db.add(structure)
+        db.commit()
+        db.refresh(structure)
+    return structure
+
+
 def calculate_payslip(db: Session, employee: Employee, month: int, year: int) -> dict:
     """Calculate payslip for an employee for a given month/year.
-    
+
     Salary is calculated based on monthly attendance:
     - Paid leaves are included in total payable days
     - Unpaid leaves are deducted from salary
+
+    Uses the employee's SalaryStructure percentages applied to CTC
+    (employee.basic_salary represents monthly CTC).
     """
+
+    monthly_ctc = employee.basic_salary or 0
+
+    # Get salary structure percentages
+    structure = _get_or_create_salary_structure(db, employee.id)
 
     # Get working days in the month (weekdays only)
     _, total_days = calendar.monthrange(year, month)
@@ -74,33 +96,39 @@ def calculate_payslip(db: Session, employee: Employee, month: int, year: int) ->
     # Payable days = attendance days + paid leave days
     payable_days = min(days_present + paid_leave_days, working_days)
 
-    # Calculate earnings (pro-rated based on payable days)
+    # Calculate earnings using SalaryStructure percentages (pro-rated)
     ratio = payable_days / working_days if working_days > 0 else 0
-    basic = round(employee.basic_salary * ratio, 2)
-    hra = round(basic * 0.4, 2)          # 40% of basic
-    conveyance = round(1600 * ratio, 2)
-    medical = round(1250 * ratio, 2)
-    gross = round(basic + hra + conveyance + medical, 2)
+
+    basic = round(monthly_ctc * (structure.basic_pct / 100) * ratio, 2)
+    hra = round(monthly_ctc * (structure.hra_pct / 100) * ratio, 2)
+    standard_allowance = round(monthly_ctc * (structure.standard_allowance_pct / 100) * ratio, 2)
+    performance_bonus = round(monthly_ctc * (structure.performance_bonus_pct / 100) * ratio, 2)
+    lta = round(monthly_ctc * (structure.lta_pct / 100) * ratio, 2)
+    fixed_allowance = round(monthly_ctc * (structure.fixed_allowance_pct / 100) * ratio, 2)
+
+    gross = round(basic + hra + standard_allowance + performance_bonus + lta + fixed_allowance, 2)
 
     # Calculate deductions
-    pf = round(basic * 0.12, 2)          # 12% of basic (employee contribution)
-    employer_pf = round(basic * 0.12, 2) # 12% of basic (employer contribution)
+    pf_employee = round(basic * (structure.employee_pf_pct / 100), 2)
+    pf_employer = round(basic * (structure.employer_pf_pct / 100), 2)
     prof_tax = get_professional_tax(gross)
-    total_deductions = round(pf + prof_tax, 2)
+    total_deductions = round(pf_employee + prof_tax, 2)
     net_pay = round(gross - total_deductions, 2)
 
     # Employer cost = gross + employer PF contribution
-    employer_cost = round(gross + employer_pf, 2)
+    employer_cost = round(gross + pf_employer, 2)
 
     return {
         "basic_salary": basic,
         "hra": hra,
-        "conveyance": conveyance,
-        "medical": medical,
-        "special_allowance": 0,
+        "standard_allowance": standard_allowance,
+        "performance_bonus": performance_bonus,
+        "lta": lta,
+        "fixed_allowance": fixed_allowance,
         "gross_salary": gross,
         "employer_cost": employer_cost,
-        "pf_deduction": pf,
+        "pf_employee": pf_employee,
+        "pf_employer": pf_employer,
         "professional_tax": prof_tax,
         "income_tax": 0,
         "other_deductions": 0,
@@ -168,6 +196,42 @@ def create_payrun(db: Session, month: int, year: int, created_by: int, company_i
     db.refresh(payrun)
 
     return payrun, None
+
+
+def create_single_payslip(db: Session, payrun_id: int, employee_id: int):
+    """Create a single payslip for a specific employee within an existing payrun."""
+
+    payrun = db.query(Payrun).filter(Payrun.id == payrun_id).first()
+    if not payrun:
+        return None, "Payrun not found"
+
+    employee = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not employee:
+        return None, "Employee not found"
+
+    # Check if payslip already exists
+    existing = db.query(Payslip).filter(
+        Payslip.payrun_id == payrun_id,
+        Payslip.employee_id == employee_id,
+    ).first()
+    if existing:
+        return None, "Payslip already exists for this employee in this payrun"
+
+    calc = calculate_payslip(db, employee, payrun.month, payrun.year)
+    payslip = Payslip(
+        payrun_id=payrun.id,
+        employee_id=employee.id,
+        status=PayslipStatus.DRAFT,
+        **calc
+    )
+    db.add(payslip)
+    db.commit()
+    db.refresh(payslip)
+
+    # Recalculate payrun totals
+    _recalculate_payrun_total(db, payrun)
+
+    return payslip, None
 
 
 def compute_payslip(db: Session, payslip: Payslip):

@@ -31,6 +31,11 @@ export default function Payroll() {
   const [payslipDetail, setPayslipDetail] = useState(null);
   const [payslipTab, setPayslipTab] = useState('worked_days');
 
+  // New payslip modal state
+  const [showNewPayslip, setShowNewPayslip] = useState(false);
+  const [availableEmployees, setAvailableEmployees] = useState([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
+
   const printRef = useRef();
 
   useEffect(() => { fetchAll(); }, []);
@@ -92,6 +97,30 @@ export default function Payroll() {
     } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
   };
 
+  const openNewPayslipModal = async () => {
+    if (!selectedPayrun) return;
+    try {
+      const res = await API.get(`/payroll/payrun/${selectedPayrun.id}/available-employees`);
+      setAvailableEmployees(res.data);
+      setSelectedEmployeeId(res.data.length > 0 ? res.data[0].id : '');
+      setShowNewPayslip(true);
+    } catch (err) { toast.error('Failed to load employees'); }
+  };
+
+  const handleCreatePayslip = async () => {
+    if (!selectedEmployeeId || !selectedPayrun) return;
+    try {
+      const res = await API.post('/payroll/payslip', {
+        payrun_id: selectedPayrun.id,
+        employee_id: parseInt(selectedEmployeeId),
+      });
+      toast.success('Payslip created!');
+      setShowNewPayslip(false);
+      viewPayrun(selectedPayrun.id);
+      viewPayslip(res.data.id);
+    } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
+  };
+
   const handlePrint = () => {
     const content = printRef.current;
     if (!content) return;
@@ -126,6 +155,13 @@ export default function Payroll() {
     const d = payslipDetail;
     const totalWorkedDays = (d.worked_days || []).reduce((s,w) => s + w.days, 0);
     const totalWorkedAmt = (d.worked_days || []).reduce((s,w) => s + w.amount, 0);
+
+    // Separate salary computation into earnings, gross, deductions, net
+    const earnings = (d.salary_computation || []).filter(l => !l.is_deduction && l.name !== 'Gross' && l.name !== 'Net Amount');
+    const grossLine = (d.salary_computation || []).find(l => l.name === 'Gross');
+    const deductions = (d.salary_computation || []).filter(l => l.is_deduction);
+    const netLine = (d.salary_computation || []).find(l => l.name === 'Net Amount');
+
     return (
       <div className="page">
         <div className="page-header">
@@ -140,7 +176,7 @@ export default function Payroll() {
 
         {/* Action buttons */}
         <div className="pr-action-bar">
-          {d.status === 'draft' && <button className="btn btn--ghost btn--sm" onClick={() => payslipAction(d.id,'draft')}>Draft</button>}
+          <button className="btn btn--accent btn--sm" onClick={openNewPayslipModal}>New Payslip</button>
           {(d.status === 'draft' || d.status === 'computed') && <button className="btn btn--primary btn--sm" onClick={() => payslipAction(d.id,'compute')}>Compute</button>}
           {d.status !== 'done' && d.status !== 'cancelled' && <button className="btn btn--success btn--sm" onClick={() => payslipAction(d.id,'validate')}>Validate</button>}
           {d.status !== 'done' && d.status !== 'cancelled' && <button className="btn btn--ghost btn--sm" onClick={() => payslipAction(d.id,'cancel')}>Cancel</button>}
@@ -149,8 +185,9 @@ export default function Payroll() {
         </div>
 
         {/* Meta info */}
-        <div className="pr-meta-grid">
-          <div className="pr-meta-item"><span className="pr-meta-label">Salary Structure</span><span className="pr-meta-value">{d.salary_structure}</span></div>
+        <div className="pr-meta-grid" style={{gridTemplateColumns:'1fr 1fr 1fr'}}>
+          <div className="pr-meta-item"><span className="pr-meta-label">Payrun</span><span className="pr-meta-value" style={{color:'var(--accent)'}}>{d.payrun_ref}</span></div>
+          <div className="pr-meta-item"><span className="pr-meta-label">Salary Structure</span><span className="pr-meta-value" style={{color:'var(--accent)'}}>{d.salary_structure}</span></div>
           <div className="pr-meta-item"><span className="pr-meta-label">Period</span><span className="pr-meta-value">{d.period}</span></div>
         </div>
 
@@ -169,12 +206,12 @@ export default function Payroll() {
           {payslipTab === 'worked_days' && (
             <div className="table-card">
               <table className="table">
-                <thead><tr><th>Description</th><th style={{textAlign:'right'}}>Days</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
+                <thead><tr><th>Type</th><th style={{textAlign:'right'}}>Days</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
                 <tbody>
                   {(d.worked_days || []).map((w,i) => (
                     <tr key={i}>
                       <td><strong>{w.name}</strong></td>
-                      <td style={{textAlign:'right'}}>{w.days.toFixed(2)} {w.name === 'Attendance' ? `(${w.days} working days in week)` : w.name === 'Paid Time Off' ? `(${w.days} Paid leaves/Month)` : ''}</td>
+                      <td style={{textAlign:'right'}}>{w.days.toFixed(2)} {w.name === 'Attendance' ? `(${Math.round(w.days)} working days in week)` : w.name === 'Paid Time Off' ? `(${Math.round(w.days)} Paid leaves/Month)` : ''}</td>
                       <td style={{textAlign:'right'}}>₹{w.amount.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
                     </tr>
                   ))}
@@ -194,18 +231,43 @@ export default function Payroll() {
           {payslipTab === 'salary' && (
             <div className="table-card">
               <table className="table">
-                <thead><tr><th>Component</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
+                <thead><tr><th>Rule Name</th><th style={{textAlign:'center'}}>Rate %</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
                 <tbody>
-                  {(d.salary_computation || []).map((line,i) => (
-                    <tr key={i} className={line.name === 'Gross Salary' ? 'pr-total-row' : ''}>
-                      <td style={{color: line.is_deduction ? '#ef4444' : 'inherit'}}>{line.is_deduction ? `(-) ${line.name}` : line.name}</td>
-                      <td style={{textAlign:'right', color: line.is_deduction ? '#ef4444' : 'inherit', fontWeight: line.name === 'Gross Salary' ? 700 : 400}}>
-                        {line.is_deduction ? '-' : ''}₹{line.amount.toLocaleString(undefined,{minimumFractionDigits:2})}
-                      </td>
+                  {/* Earnings */}
+                  {earnings.map((line,i) => (
+                    <tr key={`e-${i}`}>
+                      <td>{line.name}</td>
+                      <td style={{textAlign:'center'}}>{line.rate_pct}</td>
+                      <td style={{textAlign:'right', fontWeight: 500}}>₹ {line.amount.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
                     </tr>
                   ))}
-                  <tr className="pr-total-row"><td><strong>Total Deductions</strong></td><td style={{textAlign:'right',color:'#ef4444'}}><strong>-₹{d.total_deductions.toLocaleString(undefined,{minimumFractionDigits:2})}</strong></td></tr>
-                  <tr className="pr-net-row"><td><strong>Net Pay</strong></td><td style={{textAlign:'right'}}><strong>₹{d.net_pay.toLocaleString(undefined,{minimumFractionDigits:2})}</strong></td></tr>
+
+                  {/* Gross row */}
+                  {grossLine && (
+                    <tr className="pr-gross-row">
+                      <td><strong>{grossLine.name}</strong></td>
+                      <td style={{textAlign:'center'}}>{grossLine.rate_pct}</td>
+                      <td style={{textAlign:'right'}}><strong>₹ {grossLine.amount.toLocaleString(undefined,{minimumFractionDigits:2})}</strong></td>
+                    </tr>
+                  )}
+
+                  {/* Deductions */}
+                  {deductions.map((line,i) => (
+                    <tr key={`d-${i}`}>
+                      <td style={{color:'#ef4444'}}>{line.name}</td>
+                      <td style={{textAlign:'center'}}>{line.rate_pct}</td>
+                      <td style={{textAlign:'right', color:'#ef4444', fontWeight: 500}}>- ₹ {line.amount.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
+                    </tr>
+                  ))}
+
+                  {/* Net Amount */}
+                  {netLine && (
+                    <tr className="pr-net-row">
+                      <td><strong>{netLine.name}</strong></td>
+                      <td style={{textAlign:'center'}}>{netLine.rate_pct}</td>
+                      <td style={{textAlign:'right'}}><strong>₹ {netLine.amount.toLocaleString(undefined,{minimumFractionDigits:2})}</strong></td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -338,17 +400,17 @@ export default function Payroll() {
                   <tbody>
                     {selectedPayrun.payslips?.map(s => (
                       <tr key={s.id} style={{cursor:'pointer'}} onClick={() => viewPayslip(s.id)}>
-                        <td><strong>[{MONTHS[selectedPayrun.month-1]} {selectedPayrun.year}][{s.days_present}/{s.working_days}]</strong></td>
+                        <td><strong>[{MONTHS[selectedPayrun.month-1]} {selectedPayrun.year}][{s.employee_name}]</strong></td>
                         <td>
                           <div className="user-cell">
                             <div className="user-cell__avatar">{s.employee_name?.[0]}</div>
                             <div><div>{s.employee_name}</div><small style={{color:'#94a3b8'}}>{s.emp_code}</small></div>
                           </div>
                         </td>
-                        <td>₹{(s.employer_cost || 0).toLocaleString()}</td>
-                        <td>₹{s.basic_salary?.toLocaleString()}</td>
-                        <td>₹{s.gross_salary?.toLocaleString()}</td>
-                        <td><strong style={{color:'#10b981'}}>₹{s.net_pay?.toLocaleString()}</strong></td>
+                        <td>₹ {(s.employer_cost || 0).toLocaleString(undefined,{minimumFractionDigits:2})}</td>
+                        <td>₹ {s.basic_salary?.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
+                        <td>₹ {s.gross_salary?.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
+                        <td><strong style={{color:'#10b981'}}>₹ {s.net_pay?.toLocaleString(undefined,{minimumFractionDigits:2})}</strong></td>
                         <td>{statusBadge(s.status || 'draft')}</td>
                       </tr>
                     ))}
@@ -409,6 +471,36 @@ export default function Payroll() {
             <div className="modal__actions">
               <button className="btn btn--ghost" onClick={() => setShowCreate(false)}>Cancel</button>
               <button className="btn btn--primary" onClick={handleCreate}>Generate Payrun</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* New payslip modal */}
+      {showNewPayslip && (
+        <div className="modal-overlay" onClick={() => setShowNewPayslip(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>Create New Payslip</h3>
+            {availableEmployees.length === 0 ? (
+              <p style={{color:'#94a3b8',fontSize:'0.875rem',padding:'1rem 0'}}>All employees already have payslips in this payrun.</p>
+            ) : (
+              <>
+                <div className="form-group" style={{marginBottom:'1rem'}}>
+                  <label>Select Employee</label>
+                  <select value={selectedEmployeeId} onChange={e => setSelectedEmployeeId(e.target.value)}>
+                    {availableEmployees.map(emp => (
+                      <option key={emp.id} value={emp.id}>{emp.name} ({emp.emp_code})</option>
+                    ))}
+                  </select>
+                </div>
+                <p style={{color:'#94a3b8',fontSize:'0.875rem'}}>A payslip will be generated based on this employee's attendance and salary structure.</p>
+              </>
+            )}
+            <div className="modal__actions">
+              <button className="btn btn--ghost" onClick={() => setShowNewPayslip(false)}>Cancel</button>
+              {availableEmployees.length > 0 && (
+                <button className="btn btn--primary" onClick={handleCreatePayslip}>Create Payslip</button>
+              )}
             </div>
           </div>
         </div>
