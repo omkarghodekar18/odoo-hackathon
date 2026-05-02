@@ -1298,3 +1298,100 @@ a:hover { text-decoration: underline; }
   font-weight: 700;
   padding: 0.4rem 0.6rem;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   Payroll Module
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Dashboard layout */
+.pr-dashboard { display: flex; flex-direction: column; gap: 1.5rem; }
+.pr-dashboard__top { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+.pr-dashboard__charts { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+
+/* Panel cards */
+.pr-panel {
+  background: #fff; border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 1.25rem; box-shadow: var(--shadow-sm);
+}
+.pr-panel__title {
+  font-size: 0.95rem; font-weight: 600; margin-bottom: 1rem;
+  display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);
+}
+.pr-panel__empty { font-size: 0.85rem; color: var(--text-muted); padding: 0.5rem 0; }
+
+/* Warning items */
+.pr-warning-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.6rem 0; border-bottom: 1px solid var(--border-light);
+  font-size: 0.85rem; color: var(--text-secondary);
+}
+.pr-warning-item:last-child { border-bottom: none; }
+
+/* Pending payrun items */
+.pr-pending-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.6rem 0.75rem; margin-bottom: 0.4rem;
+  background: var(--bg-tertiary); border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm); cursor: pointer;
+  transition: all 0.2s; font-size: 0.85rem;
+}
+.pr-pending-item:hover {
+  border-color: var(--accent); background: #f0fdfa;
+}
+.pr-pending-label { color: var(--accent); font-weight: 500; }
+
+/* Chart header with toggle */
+.pr-chart-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 1rem;
+}
+.pr-chart-header h3 { font-size: 1rem; font-weight: 600; margin: 0; }
+
+/* Payrun header */
+.pr-payrun-header {
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 1rem;
+}
+.pr-payrun-actions { display: flex; gap: 0.5rem; }
+
+/* Payslip action bar */
+.pr-action-bar {
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  padding: 0.75rem 1rem; background: #fff; border: 1px solid var(--border);
+  border-radius: var(--radius); margin-bottom: 1.25rem; box-shadow: var(--shadow-sm);
+}
+
+/* Meta info grid */
+.pr-meta-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+  background: #fff; border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 1rem 1.25rem; box-shadow: var(--shadow-sm);
+}
+.pr-meta-item { display: flex; flex-direction: column; gap: 0.2rem; }
+.pr-meta-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+.pr-meta-value { font-size: 0.9rem; font-weight: 500; color: var(--text-primary); }
+
+/* Total and net rows in tables */
+.pr-total-row td { border-top: 2px solid var(--border); font-weight: 600; background: var(--bg-tertiary); }
+.pr-net-row td { background: linear-gradient(135deg, #ecfdf5, #f0fdfa); font-weight: 700; font-size: 1rem; color: var(--success); }
+
+/* Note below table */
+.pr-note {
+  padding: 0.85rem 1rem; font-size: 0.8rem; color: var(--text-muted);
+  background: var(--bg-tertiary); border-top: 1px solid var(--border);
+  font-style: italic;
+}
+
+/* Print styles */
+.print-only { display: none; }
+@media print {
+  .print-only { display: block; }
+  .pr-action-bar, .tabs, .sidebar, .topbar, .page-header { display: none !important; }
+}
+
+@media (max-width: 768px) {
+  .pr-dashboard__top { grid-template-columns: 1fr; }
+  .pr-dashboard__charts { grid-template-columns: 1fr; }
+  .pr-meta-grid { grid-template-columns: 1fr; }
+  .pr-action-bar { flex-direction: column; align-items: flex-start; }
+}

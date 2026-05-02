@@ -1,31 +1,49 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import API from '../api';
 import toast from 'react-hot-toast';
-import { HiOutlinePlus, HiOutlineEye } from 'react-icons/hi';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { HiOutlinePlus, HiOutlineEye, HiOutlineExclamation, HiOutlinePrinter, HiOutlineArrowLeft } from 'react-icons/hi';
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 export default function Payroll() {
   const { hasRole } = useAuth();
+  if (!hasRole('admin', 'payroll_officer')) return <Navigate to="/dashboard" replace />;
 
-  // Route guard: only admin + payroll_officer can access
-  if (!hasRole('admin', 'payroll_officer')) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [loading, setLoading] = useState(true);
 
+  // Dashboard state
+  const [dashboard, setDashboard] = useState(null);
+  const [costMode, setCostMode] = useState('monthly');
+  const [countMode, setCountMode] = useState('monthly');
+
+  // Payrun state
   const [payruns, setPayruns] = useState([]);
   const [selectedPayrun, setSelectedPayrun] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => { fetchPayruns(); }, []);
+  // Payslip detail state
+  const [payslipDetail, setPayslipDetail] = useState(null);
+  const [payslipTab, setPayslipTab] = useState('worked_days');
 
-  const fetchPayruns = async () => {
+  const printRef = useRef();
+
+  useEffect(() => { fetchAll(); }, []);
+
+  const fetchAll = async () => {
+    setLoading(true);
     try {
-      const res = await API.get('/payroll/payruns');
-      setPayruns(res.data);
+      const [dashRes, runRes] = await Promise.all([
+        API.get('/payroll/dashboard'),
+        API.get('/payroll/payruns'),
+      ]);
+      setDashboard(dashRes.data);
+      setPayruns(runRes.data);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
@@ -35,7 +53,7 @@ export default function Payroll() {
       await API.post('/payroll/payrun', { month, year });
       toast.success('Payrun created!');
       setShowCreate(false);
-      fetchPayruns();
+      fetchAll();
     } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
   };
 
@@ -43,100 +61,330 @@ export default function Payroll() {
     try {
       const res = await API.get(`/payroll/payrun/${id}`);
       setSelectedPayrun(res.data);
+      setPayslipDetail(null);
+      setActiveTab('payrun');
     } catch (err) { toast.error('Failed to load payrun'); }
   };
 
-  const processPayrun = async (id) => {
+  const viewPayslip = async (id) => {
     try {
-      await API.put(`/payroll/payrun/${id}/process`);
-      toast.success('Payrun processed');
-      viewPayrun(id);
-      fetchPayruns();
-    } catch (err) { toast.error('Failed'); }
+      const res = await API.get(`/payroll/payslip/${id}`);
+      setPayslipDetail(res.data);
+      setPayslipTab('worked_days');
+    } catch (err) { toast.error('Failed to load payslip'); }
   };
 
-  const markPaid = async (id) => {
+  const bulkValidate = async (payrunId) => {
     try {
-      await API.put(`/payroll/payrun/${id}/pay`);
-      toast.success('Payrun marked as paid');
-      viewPayrun(id);
-      fetchPayruns();
-    } catch (err) { toast.error('Failed'); }
+      await API.put(`/payroll/payrun/${payrunId}/validate`);
+      toast.success('All payslips validated!');
+      viewPayrun(payrunId);
+      fetchAll();
+    } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
+  };
+
+  const payslipAction = async (id, action) => {
+    try {
+      await API.put(`/payroll/payslip/${id}/${action}`);
+      toast.success(`Payslip ${action}d`);
+      viewPayslip(id);
+      if (selectedPayrun) viewPayrun(selectedPayrun.id);
+    } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
+  };
+
+  const handlePrint = () => {
+    const content = printRef.current;
+    if (!content) return;
+    const win = window.open('', '_blank');
+    win.document.write(`<html><head><title>Payslip</title>
+      <style>body{font-family:Inter,sans-serif;padding:2rem;color:#1a202c}
+      table{width:100%;border-collapse:collapse;margin:1rem 0}
+      th,td{padding:8px 12px;border:1px solid #e2e8f0;text-align:left;font-size:14px}
+      th{background:#f1f3f7;font-weight:600;font-size:12px;text-transform:uppercase}
+      h2,h3{margin:0 0 0.5rem}
+      .header{display:flex;justify-content:space-between;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:2px solid #0d9488}
+      .meta span{display:block;font-size:13px;color:#64748b}
+      .total{font-weight:700;font-size:1.1rem;margin-top:1rem;text-align:right}
+      .deduction{color:#ef4444}
+      </style></head><body>${content.innerHTML}</body></html>`);
+    win.document.close();
+    win.print();
   };
 
   const statusBadge = (s) => {
-    const map = { draft: 'badge--warning', processed: 'badge--info', paid: 'badge--success' };
-    return <span className={`badge ${map[s]}`}>{s}</span>;
+    const map = { draft:'badge--warning', computed:'badge--info', done:'badge--success', cancelled:'badge--danger',
+                  confirmed:'badge--info', validated:'badge--success', paid:'badge--success' };
+    return <span className={`badge ${map[s] || 'badge--secondary'}`}>{s}</span>;
   };
-
-  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
   if (loading) return <div className="page-loader"><div className="loading-spinner" /></div>;
 
-  return (
-    <div className="page">
-      <div className="page-header">
-        <h2>Payroll Management</h2>
-        <button className="btn btn--primary" onClick={() => setShowCreate(true)}><HiOutlinePlus /> New Payrun</button>
-      </div>
-
-      {/* Payruns list */}
-      <div className="table-card">
-        <table className="table">
-          <thead><tr><th>Period</th><th>Status</th><th>Total Amount</th><th>Created</th><th>Actions</th></tr></thead>
-          <tbody>
-            {payruns.map(p => (
-              <tr key={p.id}>
-                <td><strong>{monthNames[p.month-1]} {p.year}</strong></td>
-                <td>{statusBadge(p.status)}</td>
-                <td>₹{p.total_amount?.toLocaleString()}</td>
-                <td>{new Date(p.created_at).toLocaleDateString()}</td>
-                <td><button className="icon-btn" onClick={() => viewPayrun(p.id)}><HiOutlineEye /></button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {payruns.length === 0 && <div className="empty-state"><p>No payruns created yet</p></div>}
-      </div>
-
-      {/* Payrun detail modal */}
-      {selectedPayrun && (
-        <div className="modal-overlay" onClick={() => setSelectedPayrun(null)}>
-          <div className="modal modal--large" onClick={e => e.stopPropagation()}>
-            <div className="modal__header">
-              <h3>Payrun: {monthNames[selectedPayrun.month-1]} {selectedPayrun.year}</h3>
-              <div className="modal__header-actions">
-                {selectedPayrun.status === 'draft' && <button className="btn btn--primary" onClick={() => processPayrun(selectedPayrun.id)}>Process</button>}
-                {selectedPayrun.status === 'processed' && <button className="btn btn--success" onClick={() => markPaid(selectedPayrun.id)}>Mark as Paid</button>}
-                {statusBadge(selectedPayrun.status)}
-              </div>
+  // ═══════════════════════════════════════════════════════════════════════
+  // PAYSLIP DETAIL VIEW
+  // ═══════════════════════════════════════════════════════════════════════
+  if (payslipDetail) {
+    const d = payslipDetail;
+    const totalWorkedDays = (d.worked_days || []).reduce((s,w) => s + w.days, 0);
+    const totalWorkedAmt = (d.worked_days || []).reduce((s,w) => s + w.amount, 0);
+    return (
+      <div className="page">
+        <div className="page-header">
+          <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+            <button className="icon-btn" onClick={() => setPayslipDetail(null)}><HiOutlineArrowLeft /></button>
+            <div>
+              <h2>[{d.employee_name}]</h2>
+              <p style={{fontSize:'0.85rem',color:'#64748b'}}>{d.payrun_ref}</p>
             </div>
-            <div className="payrun-summary">
-              <div className="payrun-summary__item"><span>Total Employees</span><strong>{selectedPayrun.payslips?.length || 0}</strong></div>
-              <div className="payrun-summary__item"><span>Total Amount</span><strong>₹{selectedPayrun.total_amount?.toLocaleString()}</strong></div>
-            </div>
-            <div className="table-card" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="pr-action-bar">
+          {d.status === 'draft' && <button className="btn btn--ghost btn--sm" onClick={() => payslipAction(d.id,'draft')}>Draft</button>}
+          {(d.status === 'draft' || d.status === 'computed') && <button className="btn btn--primary btn--sm" onClick={() => payslipAction(d.id,'compute')}>Compute</button>}
+          {d.status !== 'done' && d.status !== 'cancelled' && <button className="btn btn--success btn--sm" onClick={() => payslipAction(d.id,'validate')}>Validate</button>}
+          {d.status !== 'done' && d.status !== 'cancelled' && <button className="btn btn--ghost btn--sm" onClick={() => payslipAction(d.id,'cancel')}>Cancel</button>}
+          <button className="btn btn--ghost btn--sm" onClick={handlePrint}><HiOutlinePrinter /> Print</button>
+          <div style={{marginLeft:'auto'}}>{statusBadge(d.status)}</div>
+        </div>
+
+        {/* Meta info */}
+        <div className="pr-meta-grid">
+          <div className="pr-meta-item"><span className="pr-meta-label">Salary Structure</span><span className="pr-meta-value">{d.salary_structure}</span></div>
+          <div className="pr-meta-item"><span className="pr-meta-label">Period</span><span className="pr-meta-value">{d.period}</span></div>
+        </div>
+
+        {/* Tabs: Worked Days | Salary Computation */}
+        <div className="tabs" style={{marginTop:'1.25rem'}}>
+          <button className={`tab ${payslipTab==='worked_days'?'tab--active':''}`} onClick={() => setPayslipTab('worked_days')}>Worked Days</button>
+          <button className={`tab ${payslipTab==='salary'?'tab--active':''}`} onClick={() => setPayslipTab('salary')}>Salary Computation</button>
+        </div>
+
+        <div ref={printRef}>
+          {/* Print header (hidden on screen) */}
+          <div className="print-only">
+            <div className="header"><div><h2>{d.employee_name}</h2><p>{d.payrun_ref}</p></div><div className="meta"><span>Period: {d.period}</span><span>Structure: {d.salary_structure}</span></div></div>
+          </div>
+
+          {payslipTab === 'worked_days' && (
+            <div className="table-card">
               <table className="table">
-                <thead><tr><th>Employee</th><th>Basic</th><th>HRA</th><th>Gross</th><th>PF</th><th>Prof. Tax</th><th>Deductions</th><th>Net Pay</th><th>Days</th></tr></thead>
+                <thead><tr><th>Description</th><th style={{textAlign:'right'}}>Days</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
                 <tbody>
-                  {selectedPayrun.payslips?.map(s => (
-                    <tr key={s.id}>
-                      <td><div className="user-cell"><div className="user-cell__avatar">{s.employee_name?.[0]}</div><div><div>{s.employee_name}</div><small>{s.emp_code}</small></div></div></td>
-                      <td>₹{s.basic_salary?.toLocaleString()}</td>
-                      <td>₹{s.hra?.toLocaleString()}</td>
-                      <td>₹{s.gross_salary?.toLocaleString()}</td>
-                      <td>₹{s.pf_deduction?.toLocaleString()}</td>
-                      <td>₹{s.professional_tax}</td>
-                      <td>₹{s.total_deductions?.toLocaleString()}</td>
-                      <td><strong style={{ color: '#10b981' }}>₹{s.net_pay?.toLocaleString()}</strong></td>
-                      <td>{s.days_present}/{s.working_days}</td>
+                  {(d.worked_days || []).map((w,i) => (
+                    <tr key={i}>
+                      <td><strong>{w.name}</strong></td>
+                      <td style={{textAlign:'right'}}>{w.days.toFixed(2)} {w.name === 'Attendance' ? `(${w.days} working days in week)` : w.name === 'Paid Time Off' ? `(${w.days} Paid leaves/Month)` : ''}</td>
+                      <td style={{textAlign:'right'}}>₹{w.amount.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
                     </tr>
                   ))}
+                  <tr className="pr-total-row">
+                    <td><strong>Total</strong></td>
+                    <td style={{textAlign:'right'}}><strong>{totalWorkedDays.toFixed(2)}</strong></td>
+                    <td style={{textAlign:'right'}}><strong>₹{totalWorkedAmt.toLocaleString(undefined,{minimumFractionDigits:2})}</strong></td>
+                  </tr>
+                </tbody>
+              </table>
+              <div className="pr-note">
+                Salary is calculated based on the employee's monthly attendance. Paid leaves are included in the total payable days, while unpaid leaves are deducted from the salary.
+              </div>
+            </div>
+          )}
+
+          {payslipTab === 'salary' && (
+            <div className="table-card">
+              <table className="table">
+                <thead><tr><th>Component</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
+                <tbody>
+                  {(d.salary_computation || []).map((line,i) => (
+                    <tr key={i} className={line.name === 'Gross Salary' ? 'pr-total-row' : ''}>
+                      <td style={{color: line.is_deduction ? '#ef4444' : 'inherit'}}>{line.is_deduction ? `(-) ${line.name}` : line.name}</td>
+                      <td style={{textAlign:'right', color: line.is_deduction ? '#ef4444' : 'inherit', fontWeight: line.name === 'Gross Salary' ? 700 : 400}}>
+                        {line.is_deduction ? '-' : ''}₹{line.amount.toLocaleString(undefined,{minimumFractionDigits:2})}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="pr-total-row"><td><strong>Total Deductions</strong></td><td style={{textAlign:'right',color:'#ef4444'}}><strong>-₹{d.total_deductions.toLocaleString(undefined,{minimumFractionDigits:2})}</strong></td></tr>
+                  <tr className="pr-net-row"><td><strong>Net Pay</strong></td><td style={{textAlign:'right'}}><strong>₹{d.net_pay.toLocaleString(undefined,{minimumFractionDigits:2})}</strong></td></tr>
                 </tbody>
               </table>
             </div>
-            <div className="modal__actions"><button className="btn btn--ghost" onClick={() => setSelectedPayrun(null)}>Close</button></div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // MAIN PAGE WITH TABS
+  // ═══════════════════════════════════════════════════════════════════════
+  return (
+    <div className="page">
+      <div className="page-header">
+        <h2>Payroll</h2>
+      </div>
+
+      {/* Top tabs: Dashboard | Payrun */}
+      <div className="tabs">
+        <button className={`tab ${activeTab==='dashboard'?'tab--active':''}`} onClick={() => {setActiveTab('dashboard'); setSelectedPayrun(null);}}>Dashboard</button>
+        <button className={`tab ${activeTab==='payrun'?'tab--active':''}`} onClick={() => setActiveTab('payrun')}>Payrun</button>
+      </div>
+
+      {/* ─── DASHBOARD TAB ─── */}
+      {activeTab === 'dashboard' && dashboard && (
+        <div className="pr-dashboard">
+          <div className="pr-dashboard__top">
+            {/* Warnings */}
+            <div className="pr-panel">
+              <h3 className="pr-panel__title"><HiOutlineExclamation style={{color:'#f59e0b'}} /> Warnings</h3>
+              {dashboard.warnings.filter(w => w.count > 0).length === 0
+                ? <p className="pr-panel__empty">No warnings 🎉</p>
+                : dashboard.warnings.filter(w => w.count > 0).map((w,i) => (
+                  <div key={i} className="pr-warning-item">
+                    <span>{w.message}</span><span className="badge badge--warning">{w.count}</span>
+                  </div>
+                ))
+              }
+            </div>
+
+            {/* Pending Payruns */}
+            <div className="pr-panel">
+              <h3 className="pr-panel__title">Payrun</h3>
+              {dashboard.pending_payruns.length === 0
+                ? <p className="pr-panel__empty">All payruns up to date ✓</p>
+                : dashboard.pending_payruns.map((p,i) => (
+                  <div key={i} className="pr-pending-item" onClick={() => {setMonth(p.month); setYear(p.year); setShowCreate(true);}}>
+                    <span className="pr-pending-label">{p.label}</span>
+                    <span className="badge badge--info">Generate</span>
+                  </div>
+                ))
+              }
+            </div>
           </div>
+
+          {/* Charts */}
+          <div className="pr-dashboard__charts">
+            <div className="chart-card">
+              <div className="pr-chart-header">
+                <h3>Employee Cost</h3>
+                <div className="tabs" style={{marginBottom:0}}>
+                  <button className={`tab ${costMode==='annual'?'tab--active':''}`} onClick={() => setCostMode('annual')}>Annual</button>
+                  <button className={`tab ${costMode==='monthly'?'tab--active':''}`} onClick={() => setCostMode('monthly')}>Monthly</button>
+                </div>
+              </div>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={costMode === 'monthly' ? dashboard.cost_chart_monthly : dashboard.cost_chart_annual}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="label" stroke="#94a3b8" fontSize={12} />
+                  <YAxis stroke="#94a3b8" fontSize={12} tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} />
+                  <Tooltip formatter={v => `₹${v.toLocaleString()}`} contentStyle={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:'8px'}} />
+                  <Bar dataKey="value" fill="#0d9488" radius={[4,4,0,0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="chart-card">
+              <div className="pr-chart-header">
+                <h3>Employee Count</h3>
+                <div className="tabs" style={{marginBottom:0}}>
+                  <button className={`tab ${countMode==='annual'?'tab--active':''}`} onClick={() => setCountMode('annual')}>Annual</button>
+                  <button className={`tab ${countMode==='monthly'?'tab--active':''}`} onClick={() => setCountMode('monthly')}>Monthly</button>
+                </div>
+              </div>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={countMode === 'monthly' ? dashboard.count_chart_monthly : dashboard.count_chart_annual}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="label" stroke="#94a3b8" fontSize={12} />
+                  <YAxis stroke="#94a3b8" fontSize={12} />
+                  <Tooltip contentStyle={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:'8px'}} />
+                  <Bar dataKey="value" fill="#3b82f6" radius={[4,4,0,0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── PAYRUN TAB ─── */}
+      {activeTab === 'payrun' && (
+        <div>
+          {/* If a payrun is selected, show its payslips */}
+          {selectedPayrun ? (
+            <div>
+              <div className="pr-payrun-header">
+                <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+                  <button className="icon-btn" onClick={() => setSelectedPayrun(null)}><HiOutlineArrowLeft /></button>
+                  <h3>{MONTHS[selectedPayrun.month-1]} {selectedPayrun.year} — Payrun</h3>
+                  {statusBadge(selectedPayrun.status)}
+                </div>
+                <div className="pr-payrun-actions">
+                  <button className="btn btn--primary btn--sm" onClick={() => { setMonth(new Date().getMonth()+1); setYear(new Date().getFullYear()); setShowCreate(true); }}>
+                    <HiOutlinePlus /> Payrun
+                  </button>
+                  {selectedPayrun.status !== 'validated' && selectedPayrun.status !== 'paid' && (
+                    <button className="btn btn--success btn--sm" onClick={() => bulkValidate(selectedPayrun.id)}>Validate</button>
+                  )}
+                </div>
+              </div>
+
+              <div className="table-card" style={{marginTop:'1rem'}}>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Pay Period</th><th>Employee</th><th>Employer Cost</th>
+                      <th>Basic Wage</th><th>Gross Wage</th><th>Net Wage</th><th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedPayrun.payslips?.map(s => (
+                      <tr key={s.id} style={{cursor:'pointer'}} onClick={() => viewPayslip(s.id)}>
+                        <td><strong>[{MONTHS[selectedPayrun.month-1]} {selectedPayrun.year}][{s.days_present}/{s.working_days}]</strong></td>
+                        <td>
+                          <div className="user-cell">
+                            <div className="user-cell__avatar">{s.employee_name?.[0]}</div>
+                            <div><div>{s.employee_name}</div><small style={{color:'#94a3b8'}}>{s.emp_code}</small></div>
+                          </div>
+                        </td>
+                        <td>₹{(s.employer_cost || 0).toLocaleString()}</td>
+                        <td>₹{s.basic_salary?.toLocaleString()}</td>
+                        <td>₹{s.gross_salary?.toLocaleString()}</td>
+                        <td><strong style={{color:'#10b981'}}>₹{s.net_pay?.toLocaleString()}</strong></td>
+                        <td>{statusBadge(s.status || 'draft')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {(!selectedPayrun.payslips || selectedPayrun.payslips.length === 0) && (
+                  <div className="empty-state"><p>No payslips in this payrun</p></div>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* Payrun list */
+            <div>
+              <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'1rem'}}>
+                <button className="btn btn--primary" onClick={() => setShowCreate(true)}><HiOutlinePlus /> New Payrun</button>
+              </div>
+              <div className="table-card">
+                <table className="table">
+                  <thead><tr><th>Period</th><th>Employees</th><th>Status</th><th>Total Amount</th><th>Created</th><th>Actions</th></tr></thead>
+                  <tbody>
+                    {payruns.map(p => (
+                      <tr key={p.id}>
+                        <td><strong>{MONTHS[p.month-1]} {p.year}</strong></td>
+                        <td>{p.employee_count || '—'} People</td>
+                        <td>{statusBadge(p.status)}</td>
+                        <td>₹{p.total_amount?.toLocaleString()}</td>
+                        <td>{new Date(p.created_at).toLocaleDateString()}</td>
+                        <td><button className="icon-btn" onClick={() => viewPayrun(p.id)}><HiOutlineEye /></button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {payruns.length === 0 && <div className="empty-state"><p>No payruns created yet</p></div>}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -148,7 +396,7 @@ export default function Payroll() {
             <div className="form-row">
               <div className="form-group"><label>Month</label>
                 <select value={month} onChange={e => setMonth(parseInt(e.target.value))}>
-                  {monthNames.map((m, i) => <option key={i} value={i+1}>{m}</option>)}
+                  {MONTHS.map((m, i) => <option key={i} value={i+1}>{m}</option>)}
                 </select>
               </div>
               <div className="form-group"><label>Year</label>
@@ -157,7 +405,7 @@ export default function Payroll() {
                 </select>
               </div>
             </div>
-            <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>This will calculate payslips for all employees based on their attendance and leave records.</p>
+            <p style={{color:'#94a3b8',fontSize:'0.875rem'}}>This will generate payslips for all employees based on their attendance and leave records.</p>
             <div className="modal__actions">
               <button className="btn btn--ghost" onClick={() => setShowCreate(false)}>Cancel</button>
               <button className="btn btn--primary" onClick={handleCreate}>Generate Payrun</button>

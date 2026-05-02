@@ -14,6 +14,10 @@ class EmployeeBase(BaseModel):
     address: Optional[str] = None
     bio: Optional[str] = None
     resume: Optional[str] = None
+    bank_name: Optional[str] = None
+    bank_account_number: Optional[str] = None
+    bank_ifsc_code: Optional[str] = None
+    bank_branch: Optional[str] = None
 
 
 class EmployeeCreate(EmployeeBase):
@@ -31,6 +35,10 @@ class EmployeeUpdate(BaseModel):
     address: Optional[str] = None
     bio: Optional[str] = None
     resume: Optional[str] = None
+    bank_name: Optional[str] = None
+    bank_account_number: Optional[str] = None
+    bank_ifsc_code: Optional[str] = None
+    bank_branch: Optional[str] = None
 
 
 class EmployeeSelfUpdate(BaseModel):
@@ -38,6 +46,10 @@ class EmployeeSelfUpdate(BaseModel):
     address: Optional[str] = None
     bio: Optional[str] = None
     resume: Optional[str] = None
+    bank_name: Optional[str] = None
+    bank_account_number: Optional[str] = None
+    bank_ifsc_code: Optional[str] = None
+    bank_branch: Optional[str] = None
 
 
 class EmployeeResponse(EmployeeBase):

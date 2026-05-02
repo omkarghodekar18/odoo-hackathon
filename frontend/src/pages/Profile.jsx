@@ -4,13 +4,13 @@ import API from '../api';
 import toast from 'react-hot-toast';
 import {
   HiOutlineKey, HiOutlineEye, HiOutlineEyeOff, HiOutlineX,
-  HiOutlineLockClosed, HiOutlineShieldCheck,
+  HiOutlineLockClosed, HiOutlineShieldCheck, HiOutlineLibrary,
 } from 'react-icons/hi';
 
 export default function Profile() {
   const { user, logout } = useAuth();
   const [profile, setProfile] = useState(null);
-  const [form, setForm] = useState({ full_name: '', email: '', phone: '', address: '', bio: '', resume: '' });
+  const [form, setForm] = useState({ full_name: '', email: '', phone: '', address: '', bio: '', resume: '', bank_name: '', bank_account_number: '', bank_ifsc_code: '', bank_branch: '' });
   const [loading, setLoading] = useState(true);
 
   // Change password modal state
@@ -30,7 +30,7 @@ export default function Profile() {
         try {
           const empRes = await API.get('/employees/me/profile');
           setProfile(prev => ({ ...prev, employee: empRes.data }));
-          setForm(f => ({ ...f, phone: empRes.data.phone || '', address: empRes.data.address || '', bio: empRes.data.bio || '', resume: empRes.data.resume || '' }));
+          setForm(f => ({ ...f, phone: empRes.data.phone || '', address: empRes.data.address || '', bio: empRes.data.bio || '', resume: empRes.data.resume || '', bank_name: empRes.data.bank_name || '', bank_account_number: empRes.data.bank_account_number || '', bank_ifsc_code: empRes.data.bank_ifsc_code || '', bank_branch: empRes.data.bank_branch || '' }));
         } catch {}
       } catch (err) { console.error(err); }
       finally { setLoading(false); }
@@ -43,7 +43,7 @@ export default function Profile() {
     try {
       await API.put('/auth/profile', { full_name: form.full_name, email: form.email });
       if (profile?.employee) {
-        await API.put('/employees/me/profile', { phone: form.phone, address: form.address, bio: form.bio, resume: form.resume });
+        await API.put('/employees/me/profile', { phone: form.phone, address: form.address, bio: form.bio, resume: form.resume, bank_name: form.bank_name, bank_account_number: form.bank_account_number, bank_ifsc_code: form.bank_ifsc_code, bank_branch: form.bank_branch });
       }
       toast.success('Profile updated');
       localStorage.setItem('empay_user', JSON.stringify({ ...user, full_name: form.full_name, email: form.email }));
@@ -110,6 +110,7 @@ export default function Profile() {
           <p style={{ color: '#94a3b8', marginTop: '0.5rem' }}>{profile?.email}</p>
 
           {profile?.employee && (
+            <>
             <div className="profile-card__details">
               <div><span>Employee Code</span><strong>{profile.employee.emp_code}</strong></div>
               <div><span>Department</span><strong>{profile.employee.department}</strong></div>
@@ -129,6 +130,37 @@ export default function Profile() {
                 </div>
               )}
             </div>
+
+            {/* Bank Details Card */}
+            <div style={{ marginTop: '1.25rem', padding: '1rem 1.25rem', background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <HiOutlineLibrary style={{ fontSize: '1.1rem', color: '#16a34a' }} />
+                <strong style={{ fontSize: '0.9rem', color: '#15803d' }}>Bank Details</strong>
+              </div>
+              {(profile.employee.bank_name || profile.employee.bank_account_number) ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.85rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#64748b' }}>Bank Name</span>
+                    <strong>{profile.employee.bank_name || '—'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#64748b' }}>Account No.</span>
+                    <strong>{profile.employee.bank_account_number ? '••••' + profile.employee.bank_account_number.slice(-4) : '—'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#64748b' }}>IFSC Code</span>
+                    <strong>{profile.employee.bank_ifsc_code || '—'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#64748b' }}>Branch</span>
+                    <strong>{profile.employee.bank_branch || '—'}</strong>
+                  </div>
+                </div>
+              ) : (
+                <p style={{ color: '#94a3b8', fontSize: '0.82rem', margin: 0 }}>No bank details added yet. Add them in the form →</p>
+              )}
+            </div>
+            </>
           )}
         </div>
 
@@ -160,6 +192,32 @@ export default function Profile() {
                 <div className="form-group">
                   <label>Resume (Link or Summary)</label>
                   <textarea value={form.resume} onChange={e => setForm({ ...form, resume: e.target.value })} rows="3" placeholder="Paste your resume summary or a link to your CV..." />
+                </div>
+
+                {/* ── Bank Details Section ── */}
+                <div style={{ borderTop: '1px solid var(--border-light)', marginTop: '1rem', paddingTop: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    <HiOutlineLibrary style={{ fontSize: '1rem', color: '#16a34a' }} />
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-primary)' }}>Bank Details</h4>
+                  </div>
+                  <div className="form-group">
+                    <label>Bank Name</label>
+                    <input type="text" value={form.bank_name} onChange={e => setForm({ ...form, bank_name: e.target.value })} placeholder="e.g. State Bank of India" />
+                  </div>
+                  <div className="form-group">
+                    <label>Account Number</label>
+                    <input type="text" value={form.bank_account_number} onChange={e => setForm({ ...form, bank_account_number: e.target.value })} placeholder="e.g. 1234567890123456" />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="form-group">
+                      <label>IFSC Code</label>
+                      <input type="text" value={form.bank_ifsc_code} onChange={e => setForm({ ...form, bank_ifsc_code: e.target.value.toUpperCase() })} placeholder="e.g. SBIN0001234" />
+                    </div>
+                    <div className="form-group">
+                      <label>Branch</label>
+                      <input type="text" value={form.bank_branch} onChange={e => setForm({ ...form, bank_branch: e.target.value })} placeholder="e.g. Andheri West" />
+                    </div>
+                  </div>
                 </div>
               </>
             )}
