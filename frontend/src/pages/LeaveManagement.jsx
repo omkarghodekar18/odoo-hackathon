@@ -13,7 +13,7 @@ export default function LeaveManagement() {
   const [form, setForm] = useState({ leave_type_id: '', start_date: '', end_date: '', reason: '' });
   const [filter, setFilter] = useState('');
   const [loading, setLoading] = useState(true);
-  const canApprove = ['admin', 'payroll_officer'].includes(user.role);
+  const canApprove = ['admin', 'hr_officer', 'payroll_officer'].includes(user.role);
 
   useEffect(() => { fetchData(); }, [filter]);
 
@@ -68,7 +68,7 @@ export default function LeaveManagement() {
             <option value="approved">Approved</option>
             <option value="rejected">Rejected</option>
           </select>
-          {user.role === 'employee' && <button className="btn btn--primary" onClick={() => setShowApply(true)}><HiOutlinePlus /> Apply Leave</button>}
+          <button className="btn btn--primary" onClick={() => setShowApply(true)}><HiOutlinePlus /> Apply Leave</button>
         </div>
       </div>
 
@@ -138,6 +138,18 @@ export default function LeaveManagement() {
                 <div className="form-group"><label>Start Date</label><input type="date" value={form.start_date} onChange={update('start_date')} required /></div>
                 <div className="form-group"><label>End Date</label><input type="date" value={form.end_date} onChange={update('end_date')} required /></div>
               </div>
+              {form.start_date && form.end_date && (() => {
+                const start = new Date(form.start_date);
+                const end = new Date(form.end_date);
+                const days = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                return (
+                  <div className={`badge ${days > 0 ? 'badge--info' : 'badge--danger'}`} style={{ padding: '8px 16px', fontSize: '0.9rem', marginBottom: '12px' }}>
+                    {days > 0
+                      ? `📅 ${days} day${days > 1 ? 's' : ''} requested (${start.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} → ${end.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })})`
+                      : '⚠️ End date must be after start date'}
+                  </div>
+                );
+              })()}
               <div className="form-group"><label>Reason</label><textarea value={form.reason} onChange={update('reason')} rows={3} /></div>
               <div className="modal__actions">
                 <button type="button" className="btn btn--ghost" onClick={() => setShowApply(false)}>Cancel</button>

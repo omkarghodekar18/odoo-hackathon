@@ -7,7 +7,8 @@ from app.models.employee import Employee
 from app.models.leave import LeaveType, LeaveBalance
 from app.schemas.employee import EmployeeCreate, EmployeeUpdate, EmployeeResponse, EmployeeWithUser
 from app.utils.security import get_current_user
-from app.utils.permissions import allow_admin_hr
+from app.utils.permissions import require_roles
+from app.services.auth_service import register_user
 
 router = APIRouter(prefix="/employees", tags=["Employees"])
 
@@ -50,7 +51,7 @@ def list_employees(
 @router.post("/", response_model=EmployeeResponse)
 def create_employee(
     emp_data: EmployeeCreate,
-    current_user: User = Depends(allow_admin_hr),
+    current_user: User = Depends(require_roles("admin", "hr_officer")),
     db: Session = Depends(get_db)
 ):
     """Create employee profile. Admin/HR only."""
@@ -58,11 +59,19 @@ def create_employee(
     if existing:
         raise HTTPException(status_code=400, detail="Employee code already exists")
 
-    existing_user = db.query(Employee).filter(Employee.user_id == emp_data.user_id).first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="User already has an employee profile")
+    # Create the user account first
+    user, error = register_user(
+        db, 
+        email=emp_data.email, 
+        password=emp_data.password, 
+        full_name=f"{emp_data.first_name} {emp_data.last_name}",
+        role="employee"
+    )
+    if error:
+        raise HTTPException(status_code=400, detail=error)
 
-    employee = Employee(**emp_data.model_dump())
+    emp_dict = emp_data.model_dump(exclude={"email", "password"})
+    employee = Employee(**emp_dict, user_id=user.id)
     db.add(employee)
     db.commit()
     db.refresh(employee)
@@ -118,7 +127,7 @@ def get_employee(
 def update_employee(
     employee_id: int,
     emp_data: EmployeeUpdate,
-    current_user: User = Depends(allow_admin_hr),
+    current_user: User = Depends(require_roles("admin", "hr_officer")),
     db: Session = Depends(get_db)
 ):
     """Update employee. Admin/HR only."""
@@ -138,12 +147,10 @@ def update_employee(
 @router.delete("/{employee_id}")
 def delete_employee(
     employee_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("admin")),
     db: Session = Depends(get_db)
 ):
     """Delete employee. Admin only."""
-    if current_user.role.value != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
 
     emp = db.query(Employee).filter(Employee.id == employee_id).first()
     if not emp:

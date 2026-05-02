@@ -7,6 +7,7 @@ from app.models.leave import LeaveType, LeaveBalance, LeaveRequest, LeaveStatus
 from app.models.attendance import Attendance, AttendanceStatus
 from app.schemas.leave import LeaveTypeCreate, LeaveTypeResponse, LeaveBalanceResponse, LeaveRequestCreate, LeaveRequestResponse
 from app.utils.security import get_current_user
+from app.utils.permissions import require_roles
 from datetime import date
 
 router = APIRouter(prefix="/leave", tags=["Leave"])
@@ -18,9 +19,7 @@ def list_leave_types(db: Session = Depends(get_db)):
 
 
 @router.post("/types")
-def create_leave_type(data: LeaveTypeCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role.value not in ["admin", "hr_officer"]:
-        raise HTTPException(status_code=403, detail="Access denied")
+def create_leave_type(data: LeaveTypeCreate, current_user: User = Depends(require_roles("admin", "hr_officer")), db: Session = Depends(get_db)):
     lt = LeaveType(**data.model_dump())
     db.add(lt)
     db.commit()
@@ -42,9 +41,7 @@ def get_my_leave_balance(current_user: User = Depends(get_current_user), db: Ses
 
 
 @router.get("/balance/{employee_id}")
-def get_employee_leave_balance(employee_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role.value == "employee":
-        raise HTTPException(status_code=403, detail="Access denied")
+def get_employee_leave_balance(employee_id: int, current_user: User = Depends(require_roles("admin", "hr_officer", "payroll_officer")), db: Session = Depends(get_db)):
     balances = db.query(LeaveBalance).filter(LeaveBalance.employee_id == employee_id).all()
     result = []
     for b in balances:
@@ -92,9 +89,7 @@ def list_leave_requests(status_filter: str = None, current_user: User = Depends(
 
 
 @router.put("/requests/{request_id}/approve")
-def approve_leave(request_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role.value not in ["admin", "payroll_officer"]:
-        raise HTTPException(status_code=403, detail="Only Admin/Payroll Officer can approve leaves")
+def approve_leave(request_id: int, current_user: User = Depends(require_roles("admin", "hr_officer", "payroll_officer")), db: Session = Depends(get_db)):
     req = db.query(LeaveRequest).filter(LeaveRequest.id == request_id).first()
     if not req:
         raise HTTPException(status_code=404, detail="Leave request not found")
@@ -123,9 +118,7 @@ def approve_leave(request_id: int, current_user: User = Depends(get_current_user
 
 
 @router.put("/requests/{request_id}/reject")
-def reject_leave(request_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role.value not in ["admin", "payroll_officer"]:
-        raise HTTPException(status_code=403, detail="Only Admin/Payroll Officer can reject leaves")
+def reject_leave(request_id: int, current_user: User = Depends(require_roles("admin", "hr_officer", "payroll_officer")), db: Session = Depends(get_db)):
     req = db.query(LeaveRequest).filter(LeaveRequest.id == request_id).first()
     if not req:
         raise HTTPException(status_code=404, detail="Leave request not found")

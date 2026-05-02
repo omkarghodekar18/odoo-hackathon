@@ -16,7 +16,8 @@ class EmployeeBase(BaseModel):
 
 
 class EmployeeCreate(EmployeeBase):
-    user_id: int
+    email: str
+    password: str
 
 
 class EmployeeUpdate(BaseModel):

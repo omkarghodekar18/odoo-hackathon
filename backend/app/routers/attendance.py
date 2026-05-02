@@ -8,6 +8,7 @@ from app.models.user import User
 from app.models.employee import Employee
 from app.models.attendance import Attendance, AttendanceStatus
 from app.utils.security import get_current_user
+from app.utils.permissions import require_roles
 from app.services.attendance_service import check_in, check_out
 
 router = APIRouter(prefix="/attendance", tags=["Attendance"])
@@ -62,9 +63,7 @@ def get_my_attendance(month: int = None, year: int = None, current_user: User = 
 
 
 @router.get("/all")
-def get_all_attendance(month: int = None, year: int = None, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role.value == "employee":
-        raise HTTPException(status_code=403, detail="Access denied")
+def get_all_attendance(month: int = None, year: int = None, current_user: User = Depends(require_roles("admin", "hr_officer", "payroll_officer")), db: Session = Depends(get_db)):
     query = db.query(Attendance)
     if month:
         query = query.filter(func.extract('month', Attendance.date) == month)

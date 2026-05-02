@@ -12,7 +12,7 @@ export default function Employees() {
   const [editing, setEditing] = useState(null);
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
-  const [form, setForm] = useState({ emp_code: '', first_name: '', last_name: '', department: '', designation: '', date_of_joining: '', basic_salary: '', phone: '', user_id: '' });
+  const [form, setForm] = useState({ emp_code: '', first_name: '', last_name: '', department: '', designation: '', date_of_joining: '', basic_salary: '', phone: '', email: '', password: '' });
 
   const canEdit = hasRole('admin', 'hr_officer');
 
@@ -37,7 +37,7 @@ export default function Employees() {
         await API.put(`/employees/${editing.id}`, { first_name: form.first_name, last_name: form.last_name, department: form.department, designation: form.designation, basic_salary: parseFloat(form.basic_salary), phone: form.phone });
         toast.success('Employee updated');
       } else {
-        await API.post('/employees/', { ...form, basic_salary: parseFloat(form.basic_salary), user_id: parseInt(form.user_id) });
+        await API.post('/employees/', { ...form, basic_salary: parseFloat(form.basic_salary) });
         toast.success('Employee created');
       }
       setShowModal(false);
@@ -57,13 +57,13 @@ export default function Employees() {
 
   const openEdit = (emp) => {
     setEditing(emp);
-    setForm({ emp_code: emp.emp_code, first_name: emp.first_name, last_name: emp.last_name, department: emp.department, designation: emp.designation, date_of_joining: emp.date_of_joining, basic_salary: emp.basic_salary, phone: emp.phone || '', user_id: emp.user_id });
+    setForm({ emp_code: emp.emp_code, first_name: emp.first_name, last_name: emp.last_name, department: emp.department, designation: emp.designation, date_of_joining: emp.date_of_joining, basic_salary: emp.basic_salary, phone: emp.phone || '', email: '', password: '' });
     setShowModal(true);
   };
 
   const openNew = () => {
     setEditing(null);
-    setForm({ emp_code: '', first_name: '', last_name: '', department: '', designation: '', date_of_joining: '', basic_salary: '', phone: '', user_id: '' });
+    setForm({ emp_code: '', first_name: '', last_name: '', department: '', designation: '', date_of_joining: '', basic_salary: '', phone: '', email: '', password: '' });
     setShowModal(true);
   };
 
@@ -113,12 +113,9 @@ export default function Employees() {
             <h3>{editing ? 'Edit Employee' : 'Add Employee'}</h3>
             <form onSubmit={handleSubmit}>
               {!editing && (
-                <div className="form-group">
-                  <label>Link to User Account</label>
-                  <select value={form.user_id} onChange={update('user_id')} required>
-                    <option value="">Select user...</option>
-                    {users.map(u => <option key={u.id} value={u.id}>{u.full_name} ({u.email})</option>)}
-                  </select>
+                <div className="form-row">
+                  <div className="form-group"><label>Login Email</label><input type="email" value={form.email} onChange={update('email')} required /></div>
+                  <div className="form-group"><label>Login Password</label><input type="password" value={form.password} onChange={update('password')} required /></div>
                 </div>
               )}
               {!editing && <div className="form-group"><label>Employee Code</label><input value={form.emp_code} onChange={update('emp_code')} required /></div>}

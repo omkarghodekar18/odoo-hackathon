@@ -6,15 +6,14 @@ from app.models.employee import Employee
 from app.models.payroll import Payrun, Payslip, PayrunStatus
 from app.schemas.payroll import PayrunCreate, PayslipUpdate
 from app.utils.security import get_current_user
+from app.utils.permissions import require_roles
 from app.services.payroll_service import create_payrun
 
 router = APIRouter(prefix="/payroll", tags=["Payroll"])
 
 
 @router.post("/payrun")
-def new_payrun(data: PayrunCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role.value not in ["admin", "payroll_officer"]:
-        raise HTTPException(status_code=403, detail="Access denied")
+def new_payrun(data: PayrunCreate, current_user: User = Depends(require_roles("admin", "payroll_officer")), db: Session = Depends(get_db)):
     payrun, error = create_payrun(db, data.month, data.year, current_user.id)
     if error:
         raise HTTPException(status_code=400, detail=error)
@@ -22,17 +21,13 @@ def new_payrun(data: PayrunCreate, current_user: User = Depends(get_current_user
 
 
 @router.get("/payruns")
-def list_payruns(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role.value not in ["admin", "payroll_officer"]:
-        raise HTTPException(status_code=403, detail="Access denied")
+def list_payruns(current_user: User = Depends(require_roles("admin", "payroll_officer")), db: Session = Depends(get_db)):
     payruns = db.query(Payrun).order_by(Payrun.created_at.desc()).all()
     return [{"id": p.id, "month": p.month, "year": p.year, "status": p.status.value, "total_amount": p.total_amount, "created_at": str(p.created_at)} for p in payruns]
 
 
 @router.get("/payrun/{payrun_id}")
-def get_payrun_detail(payrun_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role.value not in ["admin", "payroll_officer"]:
-        raise HTTPException(status_code=403, detail="Access denied")
+def get_payrun_detail(payrun_id: int, current_user: User = Depends(require_roles("admin", "payroll_officer")), db: Session = Depends(get_db)):
     payrun = db.query(Payrun).filter(Payrun.id == payrun_id).first()
     if not payrun:
         raise HTTPException(status_code=404, detail="Payrun not found")
@@ -45,9 +40,7 @@ def get_payrun_detail(payrun_id: int, current_user: User = Depends(get_current_u
 
 
 @router.put("/payrun/{payrun_id}/process")
-def process_payrun(payrun_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role.value not in ["admin", "payroll_officer"]:
-        raise HTTPException(status_code=403, detail="Access denied")
+def process_payrun(payrun_id: int, current_user: User = Depends(require_roles("admin", "payroll_officer")), db: Session = Depends(get_db)):
     payrun = db.query(Payrun).filter(Payrun.id == payrun_id).first()
     if not payrun:
         raise HTTPException(status_code=404, detail="Payrun not found")
@@ -57,9 +50,7 @@ def process_payrun(payrun_id: int, current_user: User = Depends(get_current_user
 
 
 @router.put("/payrun/{payrun_id}/pay")
-def mark_payrun_paid(payrun_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role.value not in ["admin", "payroll_officer"]:
-        raise HTTPException(status_code=403, detail="Access denied")
+def mark_payrun_paid(payrun_id: int, current_user: User = Depends(require_roles("admin", "payroll_officer")), db: Session = Depends(get_db)):
     payrun = db.query(Payrun).filter(Payrun.id == payrun_id).first()
     if not payrun:
         raise HTTPException(status_code=404, detail="Payrun not found")
@@ -69,9 +60,7 @@ def mark_payrun_paid(payrun_id: int, current_user: User = Depends(get_current_us
 
 
 @router.put("/payslip/{payslip_id}")
-def update_payslip(payslip_id: int, data: PayslipUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role.value not in ["admin", "payroll_officer"]:
-        raise HTTPException(status_code=403, detail="Access denied")
+def update_payslip(payslip_id: int, data: PayslipUpdate, current_user: User = Depends(require_roles("admin", "payroll_officer")), db: Session = Depends(get_db)):
     slip = db.query(Payslip).filter(Payslip.id == payslip_id).first()
     if not slip:
         raise HTTPException(status_code=404, detail="Payslip not found")

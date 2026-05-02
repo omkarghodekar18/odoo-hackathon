@@ -52,10 +52,6 @@ def seed():
         {"user": users[1], "emp_code": "EMP001", "first_name": "Sarah", "last_name": "Johnson", "dept": "HR", "desg": "HR Executive", "salary": 55000},
         {"user": users[2], "emp_code": "EMP002", "first_name": "Mike", "last_name": "Wilson", "dept": "Finance", "desg": "Financial Analyst", "salary": 60000},
         {"user": users[3], "emp_code": "EMP003", "first_name": "John", "last_name": "Doe", "dept": "Engineering", "desg": "Software Engineer", "salary": 65000},
-        {"user": users[4], "emp_code": "EMP004", "first_name": "Jane", "last_name": "Smith", "dept": "Engineering", "desg": "Senior Developer", "salary": 75000},
-        {"user": users[5], "emp_code": "EMP005", "first_name": "Bob", "last_name": "Brown", "dept": "Marketing", "desg": "Marketing Manager", "salary": 58000},
-        {"user": users[6], "emp_code": "EMP006", "first_name": "Alice", "last_name": "Davis", "dept": "Operations", "desg": "Operations Lead", "salary": 52000},
-        {"user": users[7], "emp_code": "EMP007", "first_name": "Charlie", "last_name": "Lee", "dept": "Engineering", "desg": "Data Analyst", "salary": 62000},
     ]
 
     employees = []
@@ -82,27 +78,10 @@ def seed():
     # 4. Create Leave Balances
     for emp in employees:
         for lt in leave_types:
-            used = random.randint(0, 3)
-            balance = LeaveBalance(employee_id=emp.id, leave_type_id=lt.id, allocated=lt.max_days_per_year, used=used, remaining=lt.max_days_per_year - used)
+            balance = LeaveBalance(employee_id=emp.id, leave_type_id=lt.id, allocated=lt.max_days_per_year, used=0, remaining=lt.max_days_per_year)
             db.add(balance)
 
-    # 5. Create Attendance (last 30 days)
-    today = date.today()
-    for emp in employees:
-        for i in range(30):
-            d = today - timedelta(days=i)
-            if d.weekday() >= 5:
-                continue
-            status = random.choices([AttendanceStatus.PRESENT, AttendanceStatus.ABSENT, AttendanceStatus.HALF_DAY], weights=[85, 10, 5])[0]
-            check_in_time = time(8, random.randint(30, 59)) if status != AttendanceStatus.ABSENT else None
-            check_out_time = time(17, random.randint(0, 30)) if status == AttendanceStatus.PRESENT else (time(13, 0) if status == AttendanceStatus.HALF_DAY else None)
-            att = Attendance(employee_id=emp.id, date=d, check_in=check_in_time, check_out=check_out_time, status=status)
-            db.add(att)
-
-    # 6. Create some leave requests
-    for emp in employees[:3]:
-        req = LeaveRequest(employee_id=emp.id, leave_type_id=leave_types[0].id, start_date=today + timedelta(days=5), end_date=today + timedelta(days=7), reason="Personal work", status=LeaveStatus.PENDING)
-        db.add(req)
+    # No dummy attendance or leave requests generated.
 
     db.commit()
     print("Database seeded successfully!")
