@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import API from '../api';
 import {
@@ -24,6 +24,21 @@ function fmtDate(dateStr) {
   if (!dateStr) return '—';
   const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function computeDisplayHours(r) {
+  if (r.is_active && !r.check_out_time && r.check_in_time) {
+    const start = new Date(r.check_in_time).getTime();
+    const raw = Math.max((Date.now() - start) / 3600000, 0);
+    return raw >= 4 ? raw + 1 : raw;
+  }
+  if (r.check_in_time && r.check_out_time) {
+    const start = new Date(r.check_in_time).getTime();
+    const end = new Date(r.check_out_time).getTime();
+    const raw = Math.max((end - start) / 3600000, 0);
+    return raw >= 4 ? raw + 1 : raw;
+  }
+  return r.total_hours || 0;
 }
 
 function fmtHours(hours) {
@@ -298,7 +313,7 @@ export default function Attendance() {
                   </span>
                 </td>
                 <td>
-                  <span className="hours-badge">{fmtHours(r.total_hours)}</span>
+                  <span className="hours-badge">{fmtHours(computeDisplayHours(r))}</span>
                 </td>
                 <td><span className={statusClass(r.status)}>{statusLabel(r.status)}</span></td>
               </tr>
@@ -323,7 +338,16 @@ function TodayInfoCard({ isActive, checkInTime, checkOutTime, serverRawHours, ha
     isActive
   );
 
-  const rawHours = isActive ? liveRawHours : serverRawHours;
+  const rawHours = useMemo(() => {
+    if (isActive) return liveRawHours;
+    if (checkInTime && checkOutTime) {
+      const start = new Date(checkInTime).getTime();
+      const end = new Date(checkOutTime).getTime();
+      return Math.max((end - start) / 3600000, 0);
+    }
+    return serverRawHours;
+  }, [isActive, liveRawHours, checkInTime, checkOutTime, serverRawHours]);
+
   const totalHours = rawHours >= 4 ? rawHours + 1.0 : rawHours;
   const liveStatus = hasWorkedToday ? computeStatus(totalHours) : null;
 
