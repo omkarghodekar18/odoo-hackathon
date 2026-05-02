@@ -1,6 +1,7 @@
 import random
 import string
 import re
+from datetime import date
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
@@ -39,17 +40,20 @@ def _name_initials(first: str, last: str) -> str:
 def generate_emp_code(db: Session, company: Company, first_name: str, last_name: str, year: int) -> str:
     """
     Generate employee code in the format:
-        OJ + <company_abbrev(2)> + <name_initials(4)> + <year(4)> + <serial(4)>
-    Example: OJOJIODO20223045
+        <company_abbrev(2)> + <name_initials(4)> + <year(4)> + <serial(4)>
+    Example: OIJODO20220001
     """
     co_abbrev = _company_abbrev(company.name)          # e.g. "OJ"
     name_part  = _name_initials(first_name, last_name) # e.g. "IODO"
-    prefix = f"OJ{co_abbrev}{name_part}{year}"          # e.g. "OJOJIODO2022"
+    prefix = f"{co_abbrev}{name_part}{year}"            # e.g. "OIJODO2022"
 
-    # Find how many employees already share this prefix to assign next serial
+    # Serial is yearly per company (joining sequence for that year).
+    year_start = date(year, 1, 1)
+    year_end = date(year + 1, 1, 1)
     existing = db.query(Employee).filter(
-        Employee.emp_code.like(f"{prefix}%"),
         Employee.company_id == company.id,
+        Employee.date_of_joining >= year_start,
+        Employee.date_of_joining < year_end,
     ).count()
     serial = str(existing + 1).zfill(4)               # e.g. "0001"
     return f"{prefix}{serial}"
@@ -113,7 +117,7 @@ def create_employee(
 ):
     """
     Create employee profile. Admin/HR only.
-    - emp_code is auto-generated in format OJ<CO><INIT><YEAR><SERIAL>
+    - emp_code is auto-generated in format <CO><INIT><YEAR><SERIAL>
     - password is auto-generated and returned once in the response
     """
     company = db.query(Company).filter(Company.id == current_user.company_id).first()
