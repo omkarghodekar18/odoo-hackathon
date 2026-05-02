@@ -13,6 +13,12 @@ class LeaveTypeCreate(LeaveTypeBase):
     pass
 
 
+class LeaveTypeUpdate(BaseModel):
+    name: Optional[str] = None
+    max_days_per_year: Optional[int] = None
+    description: Optional[str] = None
+
+
 class LeaveTypeResponse(LeaveTypeBase):
     id: int
 
@@ -23,6 +29,7 @@ class LeaveTypeResponse(LeaveTypeBase):
 class LeaveBalanceResponse(BaseModel):
     id: int
     employee_id: int
+    employee_name: Optional[str] = None
     leave_type_id: int
     leave_type_name: Optional[str] = None
     allocated: int
@@ -31,6 +38,12 @@ class LeaveBalanceResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class LeaveAllocationCreate(BaseModel):
+    employee_id: int
+    leave_type_id: int
+    allocated: int
 
 
 class LeaveRequestCreate(BaseModel):
