@@ -16,7 +16,7 @@ def _load_env():
 
 _load_env()
 
-def send_credentials_email(to_email: str, name: str, emp_code: str, password: str):
+def send_credentials_email(to_email: str, name: str, emp_code: str, password: str, login_email: str = None):
     """
     Sends an actual email to the employee with their credentials.
     Requires SMTP_EMAIL and SMTP_PASSWORD environment variables to be set.
@@ -43,7 +43,7 @@ Welcome to EmPay HRMS! Your account has been successfully created.
 
 Here are your login credentials:
 Employee ID: {emp_code}
-Email: {to_email}
+Email: {login_email or to_email}
 Password: {password}
 
 Please log in and change your password as soon as possible.
@@ -60,7 +60,7 @@ EmPay HRMS Team
         <p>Your account has been successfully created. Here are your login credentials:</p>
         <div style="background: #f1f5f9; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #0d9488;">
             <p style="margin: 5px 0;"><strong>Employee ID:</strong> {emp_code}</p>
-            <p style="margin: 5px 0;"><strong>Email:</strong> {to_email}</p>
+            <p style="margin: 5px 0;"><strong>Email:</strong> {login_email or to_email}</p>
             <p style="margin: 5px 0;"><strong>Password:</strong> <span style="background: #e2e8f0; padding: 2px 6px; border-radius: 3px;">{password}</span></p>
         </div>
         <p>Please log in and change your password as soon as possible.</p>

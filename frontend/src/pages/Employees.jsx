@@ -90,7 +90,8 @@ export default function Employees() {
         
         const generatedCreds = {
           emp_code: res.data.emp_code,
-          email: res.data.user_email,
+          login_email: res.data.user_email,
+          email: form.email || res.data.user_email,
           password: res.data.generated_password,
           name: `${res.data.first_name} ${res.data.last_name}`,
         };
@@ -146,7 +147,7 @@ export default function Employees() {
 
   const copyAll = () => {
     if (!credentials) return;
-    const text = `Employee: ${credentials.name}\nID: ${credentials.emp_code}\nEmail: ${credentials.email}\nPassword: ${credentials.password}`;
+    const text = `Employee: ${credentials.name}\nID: ${credentials.emp_code}\nEmail: ${credentials.login_email}\nPassword: ${credentials.password}`;
     navigator.clipboard.writeText(text).then(() => {
       setCopied(prev => ({ ...prev, all: true }));
       setTimeout(() => setCopied(prev => ({ ...prev, all: false })), 2000);
@@ -351,10 +352,10 @@ export default function Employees() {
                 </button>
               </div>
               <div className="cred-row">
-                <span className="cred-label"><HiOutlineMail /> Email</span>
-                <span className="cred-value">{credentials.email}</span>
-                <button className="icon-btn cred-copy" title="Copy" onClick={() => copyField('email', credentials.email)}>
-                  {copied.email ? <HiOutlineCheckCircle style={{ color: 'var(--success)' }} /> : <HiOutlineClipboardCopy />}
+                <span className="cred-label"><HiOutlineMail /> Login Email</span>
+                <span className="cred-value">{credentials.login_email}</span>
+                <button className="icon-btn cred-copy" title="Copy" onClick={() => copyField('login_email', credentials.login_email)}>
+                  {copied.login_email ? <HiOutlineCheckCircle style={{ color: 'var(--success)' }} /> : <HiOutlineClipboardCopy />}
                 </button>
               </div>
               <div className="cred-row">

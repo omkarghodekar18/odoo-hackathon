@@ -437,16 +437,14 @@ def create_employee(
     year = emp_data.date_of_joining.year
     emp_code = generate_emp_code(db, company, emp_data.first_name, emp_data.last_name, year)
 
-    # ── Auto-generate / derive email ─────────────────────────────────────────
-    email = emp_data.email
-    if not email:
-        domain = current_user.email.split("@")[-1] if "@" in current_user.email else "company.com"
-        base_email = f"{emp_data.first_name.lower()}.{emp_data.last_name.lower()}@{domain}"
-        email = base_email
-        counter = 1
-        while db.query(User).filter(User.email == email).first():
-            email = f"{emp_data.first_name.lower()}.{emp_data.last_name.lower()}{counter}@{domain}"
-            counter += 1
+    # ── Auto-generate company email ─────────────────────────────────────────
+    domain = current_user.email.split("@")[-1] if "@" in current_user.email else "company.com"
+    base_email = f"{emp_data.first_name.lower()}.{emp_data.last_name.lower()}@{domain}"
+    company_email = base_email
+    counter = 1
+    while db.query(User).filter(User.email == company_email).first():
+        company_email = f"{emp_data.first_name.lower()}.{emp_data.last_name.lower()}{counter}@{domain}"
+        counter += 1
 
     # ── Auto-generate password ───────────────────────────────────────────────
     plain_password = generate_password()
@@ -454,7 +452,7 @@ def create_employee(
     # ── Create user account ──────────────────────────────────────────────────
     user, error = register_user(
         db,
-        email=email,
+        email=company_email,
         password=plain_password,
         full_name=f"{emp_data.first_name} {emp_data.last_name}",
         role="employee",
@@ -501,7 +499,7 @@ def create_employee(
         bank_ifsc_code=employee.bank_ifsc_code,
         bank_branch=employee.bank_branch,
         created_at=employee.created_at,
-        user_email=email,
+        user_email=company_email,
         user_role="employee",
         is_active=True,
         generated_password=plain_password,
@@ -561,6 +559,7 @@ from pydantic import BaseModel
 class CredentialsPayload(BaseModel):
     name: str
     email: str
+    login_email: str = None
     emp_code: str
     password: str
 
@@ -580,7 +579,8 @@ def send_credentials(
             to_email=payload.email,
             name=payload.name,
             emp_code=payload.emp_code,
-            password=payload.password
+            password=payload.password,
+            login_email=payload.login_email
         )
         return {"message": "Credentials sent to email successfully"}
     except Exception as e:
