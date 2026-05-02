@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import API from '../../api';
 import toast from 'react-hot-toast';
 import {
-  HiOutlineMenu, HiOutlineBell, HiOutlineLogin, HiOutlineLogout,
+  HiOutlineMenu, HiOutlineLogin, HiOutlineLogout,
   HiOutlineUser, HiOutlineChevronDown,
 } from 'react-icons/hi';
 
@@ -128,10 +128,7 @@ export default function Topbar({ onMenuClick }) {
           )}
         </div>
 
-        {/* Notification */}
-        <button className="topbar__icon-btn">
-          <HiOutlineBell />
-        </button>
+
 
         {/* Profile Avatar + Dropdown */}
         <div className="topbar__profile-wrapper" ref={dropdownRef}>
