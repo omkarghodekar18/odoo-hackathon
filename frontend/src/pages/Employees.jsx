@@ -151,7 +151,6 @@ export default function Employees() {
       {/* ── Header ── */}
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <h2>Employees</h2>
           {canEdit && <button className="btn btn--primary btn--sm" onClick={openNew}><HiOutlinePlus /> NEW</button>}
         </div>
         <div className="page-header__actions">

@@ -109,6 +109,36 @@ def update_profile(
     return current_user
 
 
+@router.put("/change-password")
+def change_password(
+    payload: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Change the current user's password."""
+    from app.utils.security import verify_password
+
+    old_password = payload.get("old_password", "")
+    new_password = payload.get("new_password", "")
+    confirm_password = payload.get("confirm_password", "")
+
+    if not old_password or not new_password or not confirm_password:
+        raise HTTPException(status_code=400, detail="All fields are required")
+
+    if not verify_password(old_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+    if new_password != confirm_password:
+        raise HTTPException(status_code=400, detail="New passwords do not match")
+
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+
+    current_user.hashed_password = get_password_hash(new_password)
+    db.commit()
+    return {"message": "Password changed successfully"}
+
+
 @router.get("/users", response_model=list[UserResponse])
 def list_users(
     current_user: User = Depends(get_current_user),

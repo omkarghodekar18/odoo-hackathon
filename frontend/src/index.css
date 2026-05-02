@@ -802,3 +802,56 @@ a:hover { text-decoration: underline; }
   .emp-card__avatar { width: 44px; height: 44px; font-size: 0.85rem; }
   .emp-card__name { font-size: 0.82rem; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   Change Password Modal
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.pwd-modal {
+  max-width: 440px;
+}
+.pwd-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-light);
+}
+.pwd-modal__icon-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent), #115e59);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  color: white;
+  flex-shrink: 0;
+}
+.pwd-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.pwd-input-wrap input {
+  width: 100%;
+  padding-right: 2.75rem;
+}
+.pwd-toggle {
+  position: absolute;
+  right: 0.6rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+.pwd-toggle:hover {
+  color: var(--text-primary);
+}
