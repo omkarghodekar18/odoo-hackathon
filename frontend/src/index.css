@@ -41,10 +41,19 @@ a:hover { text-decoration: underline; }
 .demo-btn { background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-primary); padding: 0.4rem; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.8rem; transition: all 0.2s; font-family: inherit; }
 .demo-btn:hover { background: var(--accent); border-color: var(--accent); color: white; }
 
-/* Form Elements */
+/* Logo Upload */
+.logo-upload-container { display: flex; justify-content: center; margin-bottom: 1rem; }
+.logo-dropzone { width: 100%; max-width: 200px; padding: 1.5rem; border: 2px dashed var(--border); border-radius: var(--radius); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer; color: var(--text-muted); transition: all 0.2s; background: var(--bg-tertiary); }
+.logo-dropzone:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.logo-dropzone span { font-size: 0.85rem; font-weight: 500; }
+.logo-dropzone small { font-size: 0.7rem; }
+.logo-preview-wrapper { position: relative; width: 120px; height: 120px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+.logo-preview-img { width: 100%; height: 100%; object-fit: contain; background: white; }
+.logo-remove-btn { position: absolute; top: 0.25rem; right: 0.25rem; width: 24px; height: 24px; border-radius: 50%; background: rgba(0,0,0,0.5); color: white; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s; }
+.logo-remove-btn:hover { background: var(--danger); }/* Form Elements */
 .form-group { display: flex; flex-direction: column; gap: 0.35rem; }
 .form-group label { font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); }
-.form-group input, .form-group select, .form-group textarea { background: #fff; border: 1px solid var(--border); color: var(--text-primary); padding: 0.65rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.9rem; font-family: inherit; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; background: #fff; border: 1px solid var(--border); color: var(--text-primary); padding: 0.65rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.9rem; font-family: inherit; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
 .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(13,148,136,0.1); }
 .form-group select { cursor: pointer; }
 .form-group textarea { resize: vertical; }
@@ -254,4 +263,66 @@ a:hover { text-decoration: underline; }
 @media (max-width: 480px) {
   .stats-grid { grid-template-columns: 1fr; }
   .page-header { flex-direction: column; align-items: flex-start; }
+}
+
+/* ── Credentials Notice (inside Add Employee modal) ── */
+.cred-notice {
+  display: flex; align-items: center; gap: 0.6rem;
+  background: linear-gradient(135deg, #f0fdfa, #ecfdf5);
+  border: 1px solid var(--accent-light); border-radius: var(--radius-sm);
+  padding: 0.65rem 1rem; margin-bottom: 0.5rem;
+  font-size: 0.82rem; color: var(--accent);
+}
+.cred-notice svg { font-size: 1.1rem; flex-shrink: 0; }
+
+/* ── Credentials Modal ── */
+.cred-modal { max-width: 480px; }
+.cred-modal__header { text-align: center; margin-bottom: 1.5rem; }
+.cred-modal__icon {
+  font-size: 3rem; color: var(--success);
+  display: block; margin: 0 auto 0.75rem;
+}
+.cred-modal__header h3 { font-size: 1.3rem; margin-bottom: 0.4rem; }
+.cred-modal__header p { font-size: 0.85rem; color: var(--text-secondary); }
+
+.cred-card {
+  background: var(--bg-tertiary); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 0.5rem 0;
+  display: flex; flex-direction: column;
+  margin-bottom: 1.25rem;
+}
+.cred-row {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-light);
+}
+.cred-row:last-child { border-bottom: none; }
+
+.cred-label {
+  display: flex; align-items: center; gap: 0.4rem;
+  font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--text-muted);
+  min-width: 100px; flex-shrink: 0;
+}
+.cred-label svg { font-size: 1rem; }
+
+.cred-value {
+  flex: 1; font-size: 0.9rem; font-weight: 500;
+  color: var(--text-primary); word-break: break-all;
+}
+.cred-value--id {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1rem; font-weight: 700; color: var(--accent);
+  letter-spacing: 0.05em;
+}
+.cred-value--password {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.95rem; color: #7c3aed; font-weight: 600;
+  background: #f5f3ff; padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+}
+
+.cred-copy {
+  flex-shrink: 0; margin-left: auto;
+  width: 30px; height: 30px; font-size: 1rem;
 }

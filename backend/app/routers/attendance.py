@@ -64,7 +64,9 @@ def get_my_attendance(month: int = None, year: int = None, current_user: User = 
 
 @router.get("/all")
 def get_all_attendance(month: int = None, year: int = None, current_user: User = Depends(require_roles("admin", "hr_officer", "payroll_officer")), db: Session = Depends(get_db)):
-    query = db.query(Attendance)
+    # Scope to company employees
+    company_emp_ids = [e.id for e in db.query(Employee.id).filter(Employee.company_id == current_user.company_id).all()]
+    query = db.query(Attendance).filter(Attendance.employee_id.in_(company_emp_ids)) if company_emp_ids else db.query(Attendance).filter(False)
     if month:
         query = query.filter(func.extract('month', Attendance.date) == month)
     if year:

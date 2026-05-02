@@ -40,8 +40,8 @@ export default function Login() {
         </div>
         <form onSubmit={handleSubmit} className="auth-card__form">
           <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@empay.com" required />
+            <label htmlFor="email">Login ID / Email</label>
+            <input id="email" type="text" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@empay.com or Login ID" required />
           </div>
           <div className="form-group">
             <label htmlFor="password">Password</label>
@@ -57,10 +57,10 @@ export default function Login() {
         <div className="auth-card__demo">
           <p>Demo Credentials:</p>
           <div className="auth-card__demo-grid">
-            <button type="button" onClick={() => { setEmail('admin@empay.com'); setPassword('admin123'); }} className="demo-btn">Admin</button>
-            <button type="button" onClick={() => { setEmail('hr@empay.com'); setPassword('hr123'); }} className="demo-btn">HR</button>
-            <button type="button" onClick={() => { setEmail('payroll@empay.com'); setPassword('payroll123'); }} className="demo-btn">Payroll</button>
-            <button type="button" onClick={() => { setEmail('john@empay.com'); setPassword('emp123'); }} className="demo-btn">Employee</button>
+            <button type="button" onClick={() => { setEmail('admin@acmecorp.com'); setPassword('admin123'); }} className="demo-btn">Admin</button>
+            <button type="button" onClick={() => { setEmail('hr@acmecorp.com'); setPassword('hr123'); }} className="demo-btn">HR</button>
+            <button type="button" onClick={() => { setEmail('payroll@acmecorp.com'); setPassword('payroll123'); }} className="demo-btn">Payroll</button>
+            <button type="button" onClick={() => { setEmail('john.doe@acmecorp.com'); setPassword('emp123'); }} className="demo-btn">Employee</button>
           </div>
         </div>
       </div>

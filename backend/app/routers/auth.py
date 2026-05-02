@@ -1,23 +1,53 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import os
+import shutil
+from fastapi import APIRouter, Depends, HTTPException, status, Form, UploadFile, File
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.user import UserCreate, UserLogin, UserResponse, UserUpdate, Token
 from app.models.user import User
-from app.services.auth_service import register_user, authenticate_user
+from app.models.company import Company
+from app.services.auth_service import register_company, authenticate_user
 from app.utils.security import get_current_user, get_password_hash
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+@router.post("/register")
+def register(
+    company_name: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    confirm_password: str = Form(...),
+    phone: str = Form(None),
+    logo: UploadFile = File(None),
+    db: Session = Depends(get_db)
+):
+    """Register a new company."""
+    if password != confirm_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
 
-@router.post("/register", response_model=UserResponse)
-def register(user_data: UserCreate, db: Session = Depends(get_db)):
-    """Register a new user."""
-    user, error = register_user(
-        db, user_data.email, user_data.password, user_data.full_name, user_data.role
+    logo_path = None
+    if logo:
+        # Save logo to uploads
+        upload_dir = os.path.join(os.path.dirname(__file__), "..", "..", "uploads")
+        os.makedirs(upload_dir, exist_ok=True)
+        # Create a unique filename
+        filename = f"{email.replace('@', '_').replace('.', '_')}_{logo.filename}"
+        file_path = os.path.join(upload_dir, filename)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(logo.file, buffer)
+        logo_path = f"/uploads/{filename}"
+
+    company, user, error = register_company(
+        db, company_name, email, password, phone, logo_path
     )
     if error:
         raise HTTPException(status_code=400, detail=error)
-    return user
+        
+    return {
+        "message": "Company registered successfully",
+        "company": {"id": company.id, "name": company.name},
+        "admin_user": {"id": user.id, "email": user.email}
+    }
 
 
 @router.post("/login")
@@ -29,6 +59,17 @@ def login(user_data: UserLogin, db: Session = Depends(get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
         )
+        
+    company_data = None
+    if user.company_id:
+        company = db.query(Company).filter(Company.id == user.company_id).first()
+        if company:
+            company_data = {
+                "id": company.id,
+                "name": company.name,
+                "logo": company.logo
+            }
+            
     return {
         "access_token": token,
         "token_type": "bearer",
@@ -37,7 +78,9 @@ def login(user_data: UserLogin, db: Session = Depends(get_db)):
             "email": user.email,
             "full_name": user.full_name,
             "role": user.role.value,
-        }
+            "company_id": user.company_id,
+        },
+        "company": company_data
     }
 
 

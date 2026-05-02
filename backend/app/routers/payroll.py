@@ -14,7 +14,7 @@ router = APIRouter(prefix="/payroll", tags=["Payroll"])
 
 @router.post("/payrun")
 def new_payrun(data: PayrunCreate, current_user: User = Depends(require_roles("admin", "payroll_officer")), db: Session = Depends(get_db)):
-    payrun, error = create_payrun(db, data.month, data.year, current_user.id)
+    payrun, error = create_payrun(db, data.month, data.year, current_user.id, company_id=current_user.company_id)
     if error:
         raise HTTPException(status_code=400, detail=error)
     return {"message": "Payrun created", "id": payrun.id, "total_amount": payrun.total_amount}
@@ -22,7 +22,8 @@ def new_payrun(data: PayrunCreate, current_user: User = Depends(require_roles("a
 
 @router.get("/payruns")
 def list_payruns(current_user: User = Depends(require_roles("admin", "payroll_officer")), db: Session = Depends(get_db)):
-    payruns = db.query(Payrun).order_by(Payrun.created_at.desc()).all()
+    company_users = [u.id for u in db.query(User.id).filter(User.company_id == current_user.company_id).all()]
+    payruns = db.query(Payrun).filter(Payrun.created_by.in_(company_users)).order_by(Payrun.created_at.desc()).all()
     return [{"id": p.id, "month": p.month, "year": p.year, "status": p.status.value, "total_amount": p.total_amount, "created_at": str(p.created_at)} for p in payruns]
 
 

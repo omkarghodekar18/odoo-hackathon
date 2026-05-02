@@ -92,15 +92,16 @@ def calculate_payslip(db: Session, employee: Employee, month: int, year: int) ->
     }
 
 
-def create_payrun(db: Session, month: int, year: int, created_by: int):
-    """Create a payrun and generate payslips for all employees."""
+def create_payrun(db: Session, month: int, year: int, created_by: int, company_id: int = None):
+    """Create a payrun and generate payslips for company employees."""
 
     # Check if payrun already exists
-    existing = db.query(Payrun).filter(
+    existing_query = db.query(Payrun).filter(
         Payrun.month == month,
         Payrun.year == year,
-    ).first()
-    if existing:
+        Payrun.created_by == created_by,
+    )
+    if existing_query.first():
         return None, "Payrun already exists for this month/year"
 
     # Create payrun
@@ -114,8 +115,11 @@ def create_payrun(db: Session, month: int, year: int, created_by: int):
     db.commit()
     db.refresh(payrun)
 
-    # Generate payslips for all active employees
-    employees = db.query(Employee).all()
+    # Generate payslips for company employees
+    query = db.query(Employee)
+    if company_id:
+        query = query.filter(Employee.company_id == company_id)
+    employees = query.all()
     total_amount = 0
 
     for emp in employees:

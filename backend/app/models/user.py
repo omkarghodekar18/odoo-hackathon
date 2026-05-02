@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum as SQLEnum, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
@@ -19,6 +19,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     full_name = Column(String, nullable=False)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
     role = Column(SQLEnum(UserRole), default=UserRole.EMPLOYEE, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -26,3 +27,4 @@ class User(Base):
 
     # Relationships
     employee = relationship("Employee", back_populates="user", uselist=False)
+    company = relationship("Company", back_populates="users")
