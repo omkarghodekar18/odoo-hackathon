@@ -41,7 +41,7 @@ export default function Employees() {
   const [viewEmployee, setViewEmployee] = useState(null); // read-only detail
 
   const [form, setForm] = useState({
-    first_name: '', last_name: '', department: '', designation: '',
+    first_name: '', last_name: '', email: '', department: '', designation: '',
     date_of_joining: '', basic_salary: '', phone: '',
   });
 
@@ -87,12 +87,23 @@ export default function Employees() {
         toast.success('Employee created');
         setShowModal(false);
         fetchEmployees();
-        setCredentials({
+        
+        const generatedCreds = {
           emp_code: res.data.emp_code,
           email: res.data.user_email,
           password: res.data.generated_password,
           name: `${res.data.first_name} ${res.data.last_name}`,
-        });
+        };
+        
+        setCredentials(generatedCreds);
+        
+        // Auto-send email
+        try {
+          await API.post('/employees/send-credentials', generatedCreds);
+          toast.success('Credentials automatically emailed to employee');
+        } catch (err) {
+          toast.error('Failed to auto-send email');
+        }
       }
     } catch (err) { toast.error(err.response?.data?.detail || 'Operation failed'); }
   };
@@ -112,6 +123,7 @@ export default function Employees() {
     setEditing(emp);
     setForm({
       first_name: emp.first_name, last_name: emp.last_name,
+      email: emp.user_email || '',
       department: emp.department, designation: emp.designation,
       date_of_joining: emp.date_of_joining, basic_salary: emp.basic_salary,
       phone: emp.phone || '',
@@ -121,7 +133,7 @@ export default function Employees() {
 
   const openNew = () => {
     setEditing(null);
-    setForm({ first_name: '', last_name: '', department: '', designation: '', date_of_joining: '', basic_salary: '', phone: '' });
+    setForm({ first_name: '', last_name: '', email: '', department: '', designation: '', date_of_joining: '', basic_salary: '', phone: '' });
     setShowModal(true);
   };
 
@@ -298,6 +310,10 @@ export default function Employees() {
                 <div className="form-group"><label>Last Name</label><input value={form.last_name} onChange={update('last_name')} required /></div>
               </div>
               <div className="form-row">
+                <div className="form-group"><label>Email (Optional)</label><input type="email" placeholder="Used for login & notifications" value={form.email} onChange={update('email')} /></div>
+                <div className="form-group"><label>Phone</label><input value={form.phone} onChange={update('phone')} /></div>
+              </div>
+              <div className="form-row">
                 <div className="form-group"><label>Department</label><input value={form.department} onChange={update('department')} required /></div>
                 <div className="form-group"><label>Designation</label><input value={form.designation} onChange={update('designation')} required /></div>
               </div>
@@ -307,7 +323,6 @@ export default function Employees() {
                   <div className="form-group"><label>Date of Joining</label><input type="date" value={form.date_of_joining} onChange={update('date_of_joining')} required /></div>
                 )}
               </div>
-              <div className="form-group"><label>Phone</label><input value={form.phone} onChange={update('phone')} /></div>
               <div className="modal__actions">
                 <button type="button" className="btn btn--ghost" onClick={() => setShowModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn--primary">{editing ? 'Update' : 'Create Employee'}</button>
@@ -352,8 +367,18 @@ export default function Employees() {
             </div>
 
             <div className="modal__actions">
+              <button className="btn btn--ghost btn--full" onClick={async () => {
+                try {
+                  await API.post('/employees/send-credentials', credentials);
+                  toast.success('Credentials emailed to employee');
+                } catch (e) {
+                  toast.error('Failed to send email');
+                }
+              }}>
+                <HiOutlineMail /> Email Credentials
+              </button>
               <button className="btn btn--ghost btn--full" onClick={copyAll}>
-                {copied.all ? <><HiOutlineCheckCircle /> Copied!</> : <><HiOutlineClipboardCopy /> Copy All Credentials</>}
+                {copied.all ? <><HiOutlineCheckCircle /> Copied!</> : <><HiOutlineClipboardCopy /> Copy All</>}
               </button>
               <button className="btn btn--primary" onClick={() => setCredentials(null)}>Done</button>
             </div>

@@ -36,85 +36,97 @@ def get_payroll_dashboard(
     company_id = current_user.company_id
     emp_ids = _company_employee_ids(db, company_id)
     total_employees = len(emp_ids)
+    today = date.today()
 
     # ── Warnings ──
-    warnings = []
-
-    # Employees without bank account
     no_bank_count = db.query(Employee).filter(
         Employee.company_id == company_id,
-        or_(
-            Employee.bank_account_number == None,
-            Employee.bank_account_number == "",
-        )
+        or_(Employee.bank_account_number == None, Employee.bank_account_number == ""),
     ).count()
-    warnings.append({
-        "type": "bank_account",
-        "message": "Employee without Bank A/C",
-        "count": no_bank_count,
-    })
+    warnings = [
+        {"type": "bank_account", "message": "Employee without Bank A/C", "count": no_bank_count},
+        {"type": "manager",      "message": "Employee without Manager",   "count": 0},
+    ]
 
-    # Employees without manager (placeholder — manager field doesn't exist yet)
-    warnings.append({
-        "type": "manager",
-        "message": "Employee without Manager",
-        "count": 0,
-    })
-
-    # ── Pending payruns (months without a payrun this year) ──
-    today = date.today()
-    existing_payruns = db.query(Payrun).filter(
-        Payrun.company_id == company_id,
-        Payrun.year == today.year,
+    # ── Pending payruns (missing months in current year up to today) ──
+    existing_this_year = db.query(Payrun).filter(
+        Payrun.company_id == company_id, Payrun.year == today.year,
     ).all()
-    existing_months = {p.month for p in existing_payruns}
-
+    existing_months_this_year = {p.month for p in existing_this_year}
     pending_payruns = []
     for m in range(today.month, 0, -1):
-        if m not in existing_months and total_employees > 0:
-            label = f"Payrun for {MONTH_NAMES[m-1]} {today.year} ({total_employees} People)"
+        if m not in existing_months_this_year and total_employees > 0:
             pending_payruns.append({
-                "month": m,
-                "year": today.year,
+                "month": m, "year": today.year,
                 "employee_count": total_employees,
-                "label": label,
+                "label": f"Payrun for {MONTH_NAMES[m-1]} {today.year} ({total_employees} People)",
             })
 
-    # ── Cost chart (monthly — last 5 months) ──
+    # ── Rolling 12-month charts (works across year boundaries) ──
     cost_chart_monthly = []
     count_chart_monthly = []
-    for i in range(4, -1, -1):
+    for i in range(11, -1, -1):
         m = today.month - i
         y = today.year
-        if m <= 0:
+        while m <= 0:
             m += 12
             y -= 1
         payrun = db.query(Payrun).filter(
-            Payrun.company_id == company_id,
-            Payrun.month == m, Payrun.year == y
+            Payrun.company_id == company_id, Payrun.month == m, Payrun.year == y,
         ).first()
-        label = f"{MONTH_NAMES[m-1]} {y}"
-        cost_chart_monthly.append({
-            "label": label,
-            "value": round(payrun.total_amount, 2) if payrun else 0,
-        })
-        count_chart_monthly.append({
-            "label": label,
-            "value": payrun.employee_count if payrun else 0,
-        })
+        label = f"{MONTH_NAMES[m-1]} '{str(y)[2:]}"
+        cost_chart_monthly.append({"label": label, "value": round(payrun.total_amount, 2) if payrun else 0})
+        count_chart_monthly.append({"label": label, "value": payrun.employee_count if payrun else 0})
 
     # ── Annual chart (last 3 years) ──
     cost_chart_annual = []
     count_chart_annual = []
     for yr in range(today.year - 2, today.year + 1):
         total_cost = db.query(func.sum(Payrun.total_amount)).filter(
-            Payrun.company_id == company_id, Payrun.year == yr
+            Payrun.company_id == company_id, Payrun.year == yr,
         ).scalar() or 0
         total_count = db.query(func.sum(Payrun.employee_count)).filter(
-            Payrun.company_id == company_id, Payrun.year == yr
+            Payrun.company_id == company_id, Payrun.year == yr,
         ).scalar() or 0
         cost_chart_annual.append({"label": str(yr), "value": round(total_cost, 2)})
         count_chart_annual.append({"label": str(yr), "value": int(total_count)})
+
+    # ── KPI stats — from latest payrun with payslips ──
+    latest_payrun = db.query(Payrun).filter(
+        Payrun.company_id == company_id,
+    ).order_by(Payrun.year.desc(), Payrun.month.desc()).first()
+
+    kpi = {
+        "total_employees": total_employees,
+        "latest_period": f"{MONTH_NAMES[latest_payrun.month-1]} {latest_payrun.year}" if latest_payrun else "N/A",
+        "latest_total_cost": round(latest_payrun.total_amount, 2) if latest_payrun else 0,
+        "avg_net_pay": 0,
+        "top_earner_name": "N/A",
+        "top_earner_amount": 0,
+        "annual_cost": 0,
+        "annual_cost_year": today.year,
+        "payruns_count": db.query(Payrun).filter(Payrun.company_id == company_id).count(),
+    }
+
+    if latest_payrun:
+        slips = db.query(Payslip).filter(Payslip.payrun_id == latest_payrun.id).all()
+        if slips:
+            net_pays = [s.net_pay for s in slips if s.net_pay]
+            kpi["avg_net_pay"] = round(sum(net_pays) / len(net_pays), 2) if net_pays else 0
+            top_slip = max(slips, key=lambda s: s.net_pay or 0)
+            top_emp = db.query(Employee).filter(Employee.id == top_slip.employee_id).first()
+            kpi["top_earner_name"] = f"{top_emp.first_name} {top_emp.last_name}" if top_emp else "N/A"
+            kpi["top_earner_amount"] = round(top_slip.net_pay or 0, 2)
+
+    # Annual cost — prefer current year, fall back to latest year with data
+    for check_year in [today.year, today.year - 1, today.year - 2]:
+        annual_cost = db.query(func.sum(Payrun.total_amount)).filter(
+            Payrun.company_id == company_id, Payrun.year == check_year,
+        ).scalar() or 0
+        if annual_cost > 0:
+            kpi["annual_cost"] = round(annual_cost, 2)
+            kpi["annual_cost_year"] = check_year
+            break
 
     return {
         "warnings": warnings,
@@ -123,7 +135,9 @@ def get_payroll_dashboard(
         "cost_chart_annual": cost_chart_annual,
         "count_chart_monthly": count_chart_monthly,
         "count_chart_annual": count_chart_annual,
+        "kpi": kpi,
     }
+
 
 
 # ── Payrun CRUD ────────────────────────────────────────────────────────────────

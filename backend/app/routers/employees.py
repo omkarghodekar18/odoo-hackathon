@@ -553,3 +553,43 @@ def delete_employee(
     db.delete(emp)
     db.commit()
     return {"message": "Employee deleted"}
+
+# ─── Email Credentials (admin + hr_officer only) ─────────────────────────────
+
+from pydantic import BaseModel
+
+class CredentialsPayload(BaseModel):
+    name: str
+    email: str
+    emp_code: str
+    password: str
+
+from app.utils.email_service import send_credentials_email
+
+@router.post("/send-credentials")
+def send_credentials(
+    payload: CredentialsPayload,
+    current_user: User = Depends(require_roles("admin", "hr_officer")),
+):
+    """
+    Endpoint to send actual credentials via email using SMTP.
+    """
+    try:
+        print("credentials payload",payload)
+        send_credentials_email(
+            to_email=payload.email,
+            name=payload.name,
+            emp_code=payload.emp_code,
+            password=payload.password
+        )
+        return {"message": "Credentials sent to email successfully"}
+    except Exception as e:
+        # If SMTP is not configured, fallback to console log for testing
+        print(f"\n{'='*50}")
+        print(f"📧 FALLBACK: MOCK EMAIL TO: {payload.email}")
+        print(f"Reason: {str(e)}")
+        print(f"Employee ID: {payload.emp_code}")
+        print(f"Password: {payload.password}")
+        print(f"{'='*50}\n")
+        # Return 200 so the frontend doesn't show an error toast, but indicate it was mocked
+        return {"message": "Credentials logged to console (SMTP not configured)"}

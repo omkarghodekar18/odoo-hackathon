@@ -295,12 +295,44 @@ export default function Payroll() {
       {/* ─── DASHBOARD TAB ─── */}
       {activeTab === 'dashboard' && dashboard && (
         <div className="pr-dashboard">
+
+          {/* ── KPI cards ── */}
+          {dashboard.kpi && (
+            <div className="pr-kpi-grid">
+              <div className="pr-kpi-card">
+                <span className="pr-kpi-label">Employees on Payroll</span>
+                <span className="pr-kpi-value">{dashboard.kpi.total_employees}</span>
+                <span className="pr-kpi-sub">Active headcount</span>
+              </div>
+              <div className="pr-kpi-card pr-kpi-card--accent">
+                <span className="pr-kpi-label">Latest Period</span>
+                <span className="pr-kpi-value">₹{(dashboard.kpi.latest_total_cost || 0).toLocaleString('en-IN')}</span>
+                <span className="pr-kpi-sub">{dashboard.kpi.latest_period} total net pay</span>
+              </div>
+              <div className="pr-kpi-card">
+                <span className="pr-kpi-label">Avg Net Pay</span>
+                <span className="pr-kpi-value">₹{(dashboard.kpi.avg_net_pay || 0).toLocaleString('en-IN')}</span>
+                <span className="pr-kpi-sub">Per employee (latest month)</span>
+              </div>
+              <div className="pr-kpi-card">
+                <span className="pr-kpi-label">Annual Cost {dashboard.kpi.annual_cost_year}</span>
+                <span className="pr-kpi-value">₹{(dashboard.kpi.annual_cost || 0).toLocaleString('en-IN')}</span>
+                <span className="pr-kpi-sub">{dashboard.kpi.payruns_count} payruns total</span>
+              </div>
+              <div className="pr-kpi-card pr-kpi-card--highlight">
+                <span className="pr-kpi-label">Top Earner</span>
+                <span className="pr-kpi-value" style={{fontSize:'1.1rem'}}>{dashboard.kpi.top_earner_name}</span>
+                <span className="pr-kpi-sub">₹{(dashboard.kpi.top_earner_amount || 0).toLocaleString('en-IN')} net pay</span>
+              </div>
+            </div>
+          )}
+
           <div className="pr-dashboard__top">
             {/* Warnings */}
             <div className="pr-panel">
               <h3 className="pr-panel__title"><HiOutlineExclamation style={{color:'#f59e0b'}} /> Warnings</h3>
               {dashboard.warnings.filter(w => w.count > 0).length === 0
-                ? <p className="pr-panel__empty">No warnings 🎉</p>
+                ? <p className="pr-panel__empty">No warnings</p>
                 : dashboard.warnings.filter(w => w.count > 0).map((w,i) => (
                   <div key={i} className="pr-warning-item">
                     <span>{w.message}</span><span className="badge badge--warning">{w.count}</span>
@@ -313,7 +345,7 @@ export default function Payroll() {
             <div className="pr-panel">
               <h3 className="pr-panel__title">Payrun</h3>
               {dashboard.pending_payruns.length === 0
-                ? <p className="pr-panel__empty">All payruns up to date ✓</p>
+                ? <p className="pr-panel__empty">All payruns up to date</p>
                 : dashboard.pending_payruns.map((p,i) => (
                   <div key={i} className="pr-pending-item" onClick={() => {setMonth(p.month); setYear(p.year); setShowCreate(true);}}>
                     <span className="pr-pending-label">{p.label}</span>
@@ -331,15 +363,15 @@ export default function Payroll() {
                 <h3>Employee Cost</h3>
                 <div className="tabs" style={{marginBottom:0}}>
                   <button className={`tab ${costMode==='annual'?'tab--active':''}`} onClick={() => setCostMode('annual')}>Annual</button>
-                  <button className={`tab ${costMode==='monthly'?'tab--active':''}`} onClick={() => setCostMode('monthly')}>Monthly</button>
+                  <button className={`tab ${costMode==='monthly'?'tab--active':''}`} onClick={() => setCostMode('monthly')}>Monthly (12m)</button>
                 </div>
               </div>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={costMode === 'monthly' ? dashboard.cost_chart_monthly : dashboard.cost_chart_annual}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="label" stroke="#94a3b8" fontSize={12} />
+                  <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} />
                   <YAxis stroke="#94a3b8" fontSize={12} tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} />
-                  <Tooltip formatter={v => `₹${v.toLocaleString()}`} contentStyle={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:'8px'}} />
+                  <Tooltip formatter={v => `₹${v.toLocaleString('en-IN')}`} contentStyle={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:'8px'}} />
                   <Bar dataKey="value" fill="#0d9488" radius={[4,4,0,0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -350,13 +382,13 @@ export default function Payroll() {
                 <h3>Employee Count</h3>
                 <div className="tabs" style={{marginBottom:0}}>
                   <button className={`tab ${countMode==='annual'?'tab--active':''}`} onClick={() => setCountMode('annual')}>Annual</button>
-                  <button className={`tab ${countMode==='monthly'?'tab--active':''}`} onClick={() => setCountMode('monthly')}>Monthly</button>
+                  <button className={`tab ${countMode==='monthly'?'tab--active':''}`} onClick={() => setCountMode('monthly')}>Monthly (12m)</button>
                 </div>
               </div>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={countMode === 'monthly' ? dashboard.count_chart_monthly : dashboard.count_chart_annual}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="label" stroke="#94a3b8" fontSize={12} />
+                  <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} />
                   <YAxis stroke="#94a3b8" fontSize={12} />
                   <Tooltip contentStyle={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:'8px'}} />
                   <Bar dataKey="value" fill="#3b82f6" radius={[4,4,0,0]} />
@@ -366,6 +398,7 @@ export default function Payroll() {
           </div>
         </div>
       )}
+
 
       {/* ─── PAYRUN TAB ─── */}
       {activeTab === 'payrun' && (

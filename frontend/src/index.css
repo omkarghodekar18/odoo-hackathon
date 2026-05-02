@@ -1400,4 +1400,195 @@ a:hover { text-decoration: underline; }
   .pr-dashboard__charts { grid-template-columns: 1fr; }
   .pr-meta-grid { grid-template-columns: 1fr; }
   .pr-action-bar { flex-direction: column; align-items: flex-start; }
+  .pr-kpi-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Payroll KPI Cards ────────────────────────────────────────── */
+.pr-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.pr-kpi-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.pr-kpi-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+.pr-kpi-card--accent { border-left: 4px solid var(--accent); background: linear-gradient(135deg, #f0fdfa, #fff); }
+.pr-kpi-card--highlight { border-left: 4px solid #f59e0b; background: linear-gradient(135deg, #fffbeb, #fff); }
+.pr-kpi-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+.pr-kpi-value { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; line-height: 1.2; }
+.pr-kpi-card--accent .pr-kpi-value { color: var(--accent); }
+.pr-kpi-card--highlight .pr-kpi-value { color: #d97706; }
+.pr-kpi-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.1rem; }
+
+/* ── Salary Statement Report ──────────────────────────────────── */
+.rpt-filter-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+.rpt-filter-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.rpt-filter-row .form-group { margin-bottom: 0; }
+
+/* Document preview wrapper */
+.rpt-preview-wrap {
+  background: #f1f5f9;
+  border-radius: var(--radius);
+  padding: 2rem;
+  overflow-x: auto;
+}
+.rpt-doc {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 2.5rem;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+  min-width: 700px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* Report header */
+.rpt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 3px solid var(--accent);
+  padding-bottom: 1rem;
+  margin-bottom: 1.25rem;
+}
+.rpt-company-name {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+}
+.rpt-company-sub {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-top: 0.2rem;
+}
+.rpt-year-badge {
+  background: var(--accent);
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  padding: 0.35rem 1rem;
+  border-radius: 999px;
+}
+
+/* Employee meta grid */
+.rpt-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem 2rem;
+  background: #f0fdfa;
+  border: 1px solid #99f6e4;
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.rpt-meta-item { display: flex; flex-direction: column; gap: 2px; }
+.rpt-meta-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); font-weight: 700; }
+.rpt-meta-value { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); }
+
+/* Report table */
+.rpt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  margin-bottom: 1rem;
+}
+.rpt-table thead th {
+  background: var(--accent);
+  color: #fff;
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.rpt-table thead th:not(:first-child) { text-align: right; }
+
+.rpt-section-head td {
+  background: #f0fdfa;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 6px 10px;
+  border-bottom: 1px solid #99f6e4;
+}
+
+.rpt-data-row td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #f1f5f9;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+.rpt-data-row td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+.rpt-data-row--ded td { color: #ef4444; }
+
+.rpt-gross-row td {
+  background: #f8fafc;
+  font-weight: 700;
+  padding: 7px 10px;
+  border-top: 2px solid #e2e8f0;
+  border-bottom: 2px solid #e2e8f0;
+  white-space: nowrap;
+}
+.rpt-gross-row td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+
+.rpt-net-row td {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  padding: 9px 10px;
+  white-space: nowrap;
+}
+.rpt-net-row td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+
+.rpt-yearly {
+  background: #f0fdfa;
+  font-weight: 600;
+  color: #065f46 !important;
+  text-align: right;
+}
+.rpt-net-row .rpt-yearly { background: #065f46; color: #fff !important; }
+.rpt-gross-row .rpt-yearly { background: #e6fffa; color: #065f46 !important; }
+
+/* Report footer */
+.rpt-footer {
+  margin-top: 1.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+@media print {
+  .rpt-filter-card, .page-header, .sidebar, .topbar { display: none !important; }
+  .rpt-preview-wrap { background: #fff; padding: 0; }
+  .rpt-doc { box-shadow: none; padding: 1.5rem; }
 }
