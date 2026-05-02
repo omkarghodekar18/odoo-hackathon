@@ -10,7 +10,7 @@ import {
 export default function Profile() {
   const { user, logout } = useAuth();
   const [profile, setProfile] = useState(null);
-  const [form, setForm] = useState({ full_name: '', email: '' });
+  const [form, setForm] = useState({ full_name: '', email: '', phone: '', address: '', bio: '', resume: '' });
   const [loading, setLoading] = useState(true);
 
   // Change password modal state
@@ -30,6 +30,7 @@ export default function Profile() {
         try {
           const empRes = await API.get('/employees/me/profile');
           setProfile(prev => ({ ...prev, employee: empRes.data }));
+          setForm(f => ({ ...f, phone: empRes.data.phone || '', address: empRes.data.address || '', bio: empRes.data.bio || '', resume: empRes.data.resume || '' }));
         } catch {}
       } catch (err) { console.error(err); }
       finally { setLoading(false); }
@@ -40,9 +41,16 @@ export default function Profile() {
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
-      await API.put('/auth/profile', form);
+      await API.put('/auth/profile', { full_name: form.full_name, email: form.email });
+      if (profile?.employee) {
+        await API.put('/employees/me/profile', { phone: form.phone, address: form.address, bio: form.bio, resume: form.resume });
+      }
       toast.success('Profile updated');
-      localStorage.setItem('empay_user', JSON.stringify({ ...user, ...form }));
+      localStorage.setItem('empay_user', JSON.stringify({ ...user, full_name: form.full_name, email: form.email }));
+      if (profile?.employee) {
+        const empRes = await API.get('/employees/me/profile');
+        setProfile(prev => ({ ...prev, employee: empRes.data }));
+      }
     } catch (err) { toast.error(err.response?.data?.detail || 'Update failed'); }
   };
 
@@ -107,6 +115,19 @@ export default function Profile() {
               <div><span>Department</span><strong>{profile.employee.department}</strong></div>
               <div><span>Designation</span><strong>{profile.employee.designation}</strong></div>
               <div><span>Phone</span><strong>{profile.employee.phone || '—'}</strong></div>
+              <div><span>Address</span><strong>{profile.employee.address || '—'}</strong></div>
+              {profile.employee.bio && (
+                <div style={{ flexDirection: 'column', gap: '0.2rem' }}>
+                  <span>Bio</span>
+                  <strong>{profile.employee.bio}</strong>
+                </div>
+              )}
+              {profile.employee.resume && (
+                <div style={{ flexDirection: 'column', gap: '0.2rem' }}>
+                  <span>Resume Link / Summary</span>
+                  <strong>{profile.employee.resume}</strong>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -122,6 +143,26 @@ export default function Profile() {
               <label>Email</label>
               <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
             </div>
+            {profile?.employee && (
+              <>
+                <div className="form-group">
+                  <label>Phone</label>
+                  <input type="text" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label>Address</label>
+                  <textarea value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} rows="2" />
+                </div>
+                <div className="form-group">
+                  <label>Bio</label>
+                  <textarea value={form.bio} onChange={e => setForm({ ...form, bio: e.target.value })} rows="3" placeholder="Tell us about yourself..." />
+                </div>
+                <div className="form-group">
+                  <label>Resume (Link or Summary)</label>
+                  <textarea value={form.resume} onChange={e => setForm({ ...form, resume: e.target.value })} rows="3" placeholder="Paste your resume summary or a link to your CV..." />
+                </div>
+              </>
+            )}
             <button type="submit" className="btn btn--primary">Save Changes</button>
           </form>
 

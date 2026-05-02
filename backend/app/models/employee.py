@@ -18,6 +18,8 @@ class Employee(Base):
     basic_salary = Column(Float, default=0.0)
     phone = Column(String, nullable=True)
     address = Column(String, nullable=True)
+    bio = Column(String, nullable=True)
+    resume = Column(String, nullable=True)
     company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -13,7 +13,7 @@ from app.models.leave import LeaveType, LeaveBalance, LeaveRequest, LeaveStatus
 from app.models.attendance import AttendanceSession
 from app.schemas.employee import (
     EmployeeCreate, EmployeeUpdate, EmployeeResponse,
-    EmployeeWithUser, EmployeeCreatedResponse
+    EmployeeWithUser, EmployeeCreatedResponse, EmployeeSelfUpdate
 )
 from app.utils.security import get_current_user
 from app.utils.permissions import require_roles
@@ -102,6 +102,8 @@ def list_employees(
             basic_salary=emp.basic_salary,
             phone=emp.phone,
             address=emp.address,
+            bio=emp.bio,
+            resume=emp.resume,
             created_at=emp.created_at,
             user_email=user.email if user else None,
             user_role=user.role.value if user else None,
@@ -166,6 +168,8 @@ def get_all_employee_status(
             "basic_salary": emp.basic_salary,
             "phone": emp.phone,
             "address": emp.address,
+            "bio": emp.bio,
+            "resume": emp.resume,
             "user_email": user.email if user else None,
             "user_role": user.role.value if user else None,
             "is_active": user.is_active if user else None,
@@ -331,6 +335,8 @@ def get_employee_detail(
         "basic_salary": emp.basic_salary,
         "phone": emp.phone,
         "address": emp.address,
+        "bio": emp.bio,
+        "resume": emp.resume,
         "user_email": user.email if user else None,
         "user_role": user.role.value if user else None,
         "is_active": user.is_active if user else None,
@@ -414,6 +420,8 @@ def create_employee(
         basic_salary=employee.basic_salary,
         phone=employee.phone,
         address=employee.address,
+        bio=employee.bio,
+        resume=employee.resume,
         created_at=employee.created_at,
         user_email=email,
         user_role="employee",
@@ -449,6 +457,8 @@ def get_employee(
         basic_salary=emp.basic_salary,
         phone=emp.phone,
         address=emp.address,
+        bio=emp.bio,
+        resume=emp.resume,
         created_at=emp.created_at,
         user_email=user.email if user else None,
         user_role=user.role.value if user else None,
@@ -521,8 +531,30 @@ def get_my_profile(
         basic_salary=emp.basic_salary,
         phone=emp.phone,
         address=emp.address,
+        bio=emp.bio,
+        resume=emp.resume,
         created_at=emp.created_at,
         user_email=current_user.email,
         user_role=current_user.role.value,
         is_active=current_user.is_active,
     )
+
+
+@router.put("/me/profile", response_model=EmployeeResponse)
+def update_my_profile(
+    emp_data: EmployeeSelfUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update current user's employee profile (bio, resume, phone, address)."""
+    emp = db.query(Employee).filter(Employee.user_id == current_user.id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="No employee profile found")
+
+    update_data = emp_data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(emp, key, value)
+
+    db.commit()
+    db.refresh(emp)
+    return emp

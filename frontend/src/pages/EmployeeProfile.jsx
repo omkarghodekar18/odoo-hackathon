@@ -46,7 +46,7 @@ export default function EmployeeProfile() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState({
     first_name: '', last_name: '', department: '', designation: '',
-    phone: '', address: '', date_of_joining: ''
+    phone: '', address: '', date_of_joining: '', bio: '', resume: ''
   });
   const [profileSaving, setProfileSaving] = useState(false);
 
@@ -198,7 +198,9 @@ export default function EmployeeProfile() {
                 designation: emp.designation || '',
                 phone: emp.phone || '',
                 address: emp.address || '',
-                date_of_joining: emp.date_of_joining || ''
+                date_of_joining: emp.date_of_joining || '',
+                bio: emp.bio || '',
+                resume: emp.resume || ''
               });
               setShowEditModal(true);
             }}
@@ -251,8 +253,29 @@ export default function EmployeeProfile() {
                   {fullName} is a {emp.designation} in the {emp.department} department. Joined the organization on {emp.date_of_joining}.
                 </p>
               </div>
-              <div className="ep-section"><h4>What I love about my job</h4><p className="ep-text-muted">Contributing to the team's success and constantly learning new skills.</p></div>
-              <div className="ep-section"><h4>My interests and hobbies</h4><p className="ep-text-muted">Technology, reading, and continuous personal development.</p></div>
+              {emp.bio && (
+                <div className="ep-section">
+                  <h4>Bio</h4>
+                  <p className="ep-text-muted" style={{ whiteSpace: 'pre-wrap' }}>{emp.bio}</p>
+                </div>
+              )}
+              {emp.resume && (
+                <div className="ep-section">
+                  <h4>Resume Summary / Link</h4>
+                  <p className="ep-text-muted" style={{ whiteSpace: 'pre-wrap' }}>
+                    {emp.resume.startsWith('http') ? (
+                      <a href={emp.resume} target="_blank" rel="noopener noreferrer">{emp.resume}</a>
+                    ) : (
+                      emp.resume
+                    )}
+                  </p>
+                </div>
+              )}
+              {!emp.bio && !emp.resume && (
+                <div className="ep-section">
+                  <p className="ep-text-muted">This employee hasn't provided a bio or resume yet.</p>
+                </div>
+              )}
             </div>
             <div className="ep-resume__side">
               <div className="ep-section">
@@ -499,6 +522,8 @@ export default function EmployeeProfile() {
                 <div className="form-group"><label>Phone</label><input value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} /></div>
               </div>
               <div className="form-group"><label>Address</label><input value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} /></div>
+              <div className="form-group"><label>Bio</label><textarea value={editForm.bio} onChange={e => setEditForm({...editForm, bio: e.target.value})} rows="3" /></div>
+              <div className="form-group"><label>Resume Link / Summary</label><textarea value={editForm.resume} onChange={e => setEditForm({...editForm, resume: e.target.value})} rows="3" /></div>
               <div className="modal__actions">
                 <button type="button" className="btn btn--ghost" onClick={() => setShowEditModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn--primary" disabled={profileSaving}>

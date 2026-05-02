@@ -12,6 +12,8 @@ class EmployeeBase(BaseModel):
     basic_salary: float = 0.0
     phone: Optional[str] = None
     address: Optional[str] = None
+    bio: Optional[str] = None
+    resume: Optional[str] = None
 
 
 class EmployeeCreate(EmployeeBase):
@@ -27,6 +29,15 @@ class EmployeeUpdate(BaseModel):
     basic_salary: Optional[float] = None
     phone: Optional[str] = None
     address: Optional[str] = None
+    bio: Optional[str] = None
+    resume: Optional[str] = None
+
+
+class EmployeeSelfUpdate(BaseModel):
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    bio: Optional[str] = None
+    resume: Optional[str] = None
 
 
 class EmployeeResponse(EmployeeBase):

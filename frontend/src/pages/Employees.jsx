@@ -9,6 +9,7 @@ import {
   HiOutlineMail, HiOutlineIdentification, HiOutlineX,
   HiOutlineOfficeBuilding, HiOutlinePhone, HiOutlineCalendar,
   HiOutlineCurrencyDollar, HiOutlineBriefcase,
+  HiOutlineLocationMarker, HiOutlineUser, HiOutlineDocumentText
 } from 'react-icons/hi';
 
 /* ─── status helpers ─── */
@@ -242,6 +243,24 @@ export default function Employees() {
                 <HiOutlinePhone />
                 <div><span>Phone</span><strong>{viewEmployee.phone || '—'}</strong></div>
               </div>
+              {viewEmployee.address && (
+                <div className="emp-detail-row">
+                  <HiOutlineLocationMarker />
+                  <div><span>Address</span><strong>{viewEmployee.address}</strong></div>
+                </div>
+              )}
+              {viewEmployee.bio && (
+                <div className="emp-detail-row">
+                  <HiOutlineUser />
+                  <div><span>Bio</span><strong>{viewEmployee.bio}</strong></div>
+                </div>
+              )}
+              {viewEmployee.resume && (
+                <div className="emp-detail-row">
+                  <HiOutlineDocumentText />
+                  <div><span>Resume</span><strong>{viewEmployee.resume}</strong></div>
+                </div>
+              )}
             </div>
 
             {canEdit && (
