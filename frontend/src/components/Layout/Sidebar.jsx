@@ -13,7 +13,7 @@ const navItems = [
   { path: '/attendance', label: 'Attendance', icon: HiOutlineClipboardCheck, roles: ['admin', 'hr_officer', 'payroll_officer', 'employee'] },
   { path: '/leave', label: 'Time Off', icon: HiOutlineCalendar, roles: ['admin', 'hr_officer', 'payroll_officer', 'employee'] },
   { path: '/payroll', label: 'Payroll', icon: HiOutlineCurrencyDollar, roles: ['admin', 'payroll_officer'] },
-  { path: '/payslips', label: 'My Payslips', icon: HiOutlineDocumentReport, roles: ['employee'] },
+  { path: '/payslips', label: 'My Payslips', icon: HiOutlineDocumentReport, roles: ['employee', 'hr_officer', 'payroll_officer'] },
   { path: '/reports', label: 'Reports', icon: HiOutlineDocumentReport, roles: ['admin', 'payroll_officer'] },
   { path: '/settings', label: 'Settings', icon: HiOutlineCog, roles: ['admin'] },
 ];

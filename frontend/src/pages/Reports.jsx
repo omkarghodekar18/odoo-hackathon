@@ -1,8 +1,17 @@
 import { useState, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import API from '../api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function Reports() {
+  const { hasRole } = useAuth();
+
+  // Route guard: only admin + payroll_officer can access
+  if (!hasRole('admin', 'payroll_officer')) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   const [attendanceData, setAttendanceData] = useState([]);
   const [leaveData, setLeaveData] = useState([]);
   const [payrollData, setPayrollData] = useState([]);

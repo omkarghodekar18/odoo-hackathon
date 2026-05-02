@@ -1,9 +1,18 @@
 import { useState, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import API from '../api';
 import toast from 'react-hot-toast';
 import { HiOutlinePlus } from 'react-icons/hi';
 
 export default function Settings() {
+  const { user, hasRole } = useAuth();
+
+  // Route guard: only admin can access Settings
+  if (!hasRole('admin')) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   const [users, setUsers] = useState([]);
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [activeTab, setActiveTab] = useState('users');

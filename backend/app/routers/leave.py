@@ -116,15 +116,20 @@ def get_employee_leave_balance(
     current_user: User = Depends(require_roles("admin", "hr_officer")),
     db: Session = Depends(get_db),
 ):
-    """Admin/HR can view any employee's balance."""
+    """Admin/HR can view any employee's balance (within same company)."""
+    emp = db.query(Employee).filter(
+        Employee.id == employee_id,
+        Employee.company_id == current_user.company_id,
+    ).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found in your company")
     balances = db.query(LeaveBalance).filter(LeaveBalance.employee_id == employee_id).all()
-    emp = db.query(Employee).filter(Employee.id == employee_id).first()
     result = []
     for b in balances:
         lt = db.query(LeaveType).filter(LeaveType.id == b.leave_type_id).first()
         result.append({
             "id": b.id, "employee_id": b.employee_id,
-            "employee_name": f"{emp.first_name} {emp.last_name}" if emp else "",
+            "employee_name": f"{emp.first_name} {emp.last_name}",
             "leave_type_id": b.leave_type_id,
             "leave_type_name": lt.name if lt else "",
             "allocated": b.allocated, "used": b.used, "remaining": b.remaining,

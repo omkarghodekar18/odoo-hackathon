@@ -86,9 +86,9 @@ def seed():
 
     # 4. Create Leave Types
     leave_types_data = [
-        {"name": "Casual Leave", "max_days": 12, "desc": "For personal matters"},
-        {"name": "Sick Leave", "max_days": 10, "desc": "For medical reasons"},
-        {"name": "Earned Leave", "max_days": 15, "desc": "Accumulated paid leave"},
+        {"name": "Paid Time Off", "max_days": 25, "desc": "Paid time off for personal matters"},
+        {"name": "Sick Leave", "max_days": 10, "desc": "Leave for medical / health reasons"},
+        {"name": "Unpaid Leaves", "max_days": 30, "desc": "Leave without pay"},
     ]
 
     leave_types = []

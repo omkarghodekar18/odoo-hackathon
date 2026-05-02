@@ -144,10 +144,10 @@ def list_users(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """List all users (Admin only)."""
+    """List all users in the same company (Admin only)."""
     if current_user.role.value != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
-    return db.query(User).all()
+    return db.query(User).filter(User.company_id == current_user.company_id).all()
 
 
 @router.put("/users/{user_id}/role")

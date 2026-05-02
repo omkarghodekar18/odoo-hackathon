@@ -218,6 +218,20 @@ def get_monthly_summary(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Employees can only view their own summary
+    if current_user.role.value == "employee":
+        emp = db.query(Employee).filter(Employee.user_id == current_user.id).first()
+        if not emp or emp.id != employee_id:
+            raise HTTPException(status_code=403, detail="You can only view your own attendance summary")
+    else:
+        # Admin/HR/Payroll: verify employee belongs to same company
+        emp = db.query(Employee).filter(
+            Employee.id == employee_id,
+            Employee.company_id == current_user.company_id,
+        ).first()
+        if not emp:
+            raise HTTPException(status_code=404, detail="Employee not found")
+
     records = db.query(Attendance).filter(
         Attendance.employee_id == employee_id,
         func.strftime('%m', Attendance.date) == f"{month:02d}",

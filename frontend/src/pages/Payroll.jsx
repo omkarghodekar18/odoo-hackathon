@@ -1,9 +1,18 @@
 import { useState, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import API from '../api';
 import toast from 'react-hot-toast';
 import { HiOutlinePlus, HiOutlineEye } from 'react-icons/hi';
 
 export default function Payroll() {
+  const { hasRole } = useAuth();
+
+  // Route guard: only admin + payroll_officer can access
+  if (!hasRole('admin', 'payroll_officer')) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   const [payruns, setPayruns] = useState([]);
   const [selectedPayrun, setSelectedPayrun] = useState(null);
   const [showCreate, setShowCreate] = useState(false);

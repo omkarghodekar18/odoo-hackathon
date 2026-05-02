@@ -73,7 +73,60 @@ def generate_password(length: int = 10) -> str:
             return pwd
 
 
-# ─── Endpoints ────────────────────────────────────────────────────────────────
+# ─── Self-service (must be BEFORE /{employee_id} to avoid route conflicts) ───
+
+@router.get("/me/profile", response_model=EmployeeWithUser)
+def get_my_profile(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get current user's employee profile."""
+    emp = db.query(Employee).filter(Employee.user_id == current_user.id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="No employee profile found")
+
+    return EmployeeWithUser(
+        id=emp.id,
+        user_id=emp.user_id,
+        emp_code=emp.emp_code,
+        first_name=emp.first_name,
+        last_name=emp.last_name,
+        department=emp.department,
+        designation=emp.designation,
+        date_of_joining=emp.date_of_joining,
+        basic_salary=emp.basic_salary,
+        phone=emp.phone,
+        address=emp.address,
+        bio=emp.bio,
+        resume=emp.resume,
+        created_at=emp.created_at,
+        user_email=current_user.email,
+        user_role=current_user.role.value,
+        is_active=current_user.is_active,
+    )
+
+
+@router.put("/me/profile", response_model=EmployeeResponse)
+def update_my_profile(
+    emp_data: EmployeeSelfUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update current user's employee profile (bio, resume, phone, address)."""
+    emp = db.query(Employee).filter(Employee.user_id == current_user.id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="No employee profile found")
+
+    update_data = emp_data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(emp, key, value)
+
+    db.commit()
+    db.refresh(emp)
+    return emp
+
+
+# ─── List & Status ────────────────────────────────────────────────────────────
 
 @router.get("/", response_model=List[EmployeeWithUser])
 def list_employees(
@@ -81,7 +134,7 @@ def list_employees(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """List all employees in the same company."""
+    """List all employees in the same company. All roles can view (read-only)."""
     query = db.query(Employee).filter(Employee.company_id == current_user.company_id)
     if department:
         query = query.filter(Employee.department == department)
@@ -177,6 +230,8 @@ def get_all_employee_status(
         })
     return result
 
+
+# ─── Salary Info (admin + payroll_officer only) ──────────────────────────────
 
 @router.get("/{employee_id}/salary-info")
 def get_employee_salary_info(
@@ -308,6 +363,7 @@ def update_employee_salary_info(
     return {"message": "Salary structure updated successfully"}
 
 
+# ─── Employee Detail (single) ────────────────────────────────────────────────
 
 @router.get("/{employee_id}")
 def get_employee_detail(
@@ -315,7 +371,7 @@ def get_employee_detail(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get a single employee's full detail."""
+    """Get a single employee's full detail. Must be in same company."""
     emp = db.query(Employee).filter(
         Employee.id == employee_id,
         Employee.company_id == current_user.company_id,
@@ -342,6 +398,8 @@ def get_employee_detail(
         "is_active": user.is_active if user else None,
     }
 
+
+# ─── Create Employee (admin + hr_officer only) ───────────────────────────────
 
 @router.post("/", response_model=EmployeeCreatedResponse)
 def create_employee(
@@ -430,50 +488,16 @@ def create_employee(
     )
 
 
-@router.get("/{employee_id}", response_model=EmployeeWithUser)
-def get_employee(
-    employee_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Get employee details (must be in same company)."""
-    emp = db.query(Employee).filter(
-        Employee.id == employee_id,
-        Employee.company_id == current_user.company_id
-    ).first()
-    if not emp:
-        raise HTTPException(status_code=404, detail="Employee not found")
-
-    user = db.query(User).filter(User.id == emp.user_id).first()
-    return EmployeeWithUser(
-        id=emp.id,
-        user_id=emp.user_id,
-        emp_code=emp.emp_code,
-        first_name=emp.first_name,
-        last_name=emp.last_name,
-        department=emp.department,
-        designation=emp.designation,
-        date_of_joining=emp.date_of_joining,
-        basic_salary=emp.basic_salary,
-        phone=emp.phone,
-        address=emp.address,
-        bio=emp.bio,
-        resume=emp.resume,
-        created_at=emp.created_at,
-        user_email=user.email if user else None,
-        user_role=user.role.value if user else None,
-        is_active=user.is_active if user else None,
-    )
-
+# ─── Update Employee (admin + hr_officer only) ──────────────────────────────
 
 @router.put("/{employee_id}", response_model=EmployeeResponse)
 def update_employee(
     employee_id: int,
     emp_data: EmployeeUpdate,
-    current_user: User = Depends(require_roles("admin", "hr_officer", "payroll_officer")),
+    current_user: User = Depends(require_roles("admin", "hr_officer")),
     db: Session = Depends(get_db)
 ):
-    """Update employee. Admin/HR/Payroll only. Scoped to company."""
+    """Update employee. Admin/HR only. Scoped to company."""
     emp = db.query(Employee).filter(
         Employee.id == employee_id,
         Employee.company_id == current_user.company_id
@@ -489,6 +513,8 @@ def update_employee(
     db.refresh(emp)
     return emp
 
+
+# ─── Delete Employee (admin only) ────────────────────────────────────────────
 
 @router.delete("/{employee_id}")
 def delete_employee(
@@ -507,54 +533,3 @@ def delete_employee(
     db.delete(emp)
     db.commit()
     return {"message": "Employee deleted"}
-
-
-@router.get("/me/profile", response_model=EmployeeWithUser)
-def get_my_profile(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Get current user's employee profile."""
-    emp = db.query(Employee).filter(Employee.user_id == current_user.id).first()
-    if not emp:
-        raise HTTPException(status_code=404, detail="No employee profile found")
-
-    return EmployeeWithUser(
-        id=emp.id,
-        user_id=emp.user_id,
-        emp_code=emp.emp_code,
-        first_name=emp.first_name,
-        last_name=emp.last_name,
-        department=emp.department,
-        designation=emp.designation,
-        date_of_joining=emp.date_of_joining,
-        basic_salary=emp.basic_salary,
-        phone=emp.phone,
-        address=emp.address,
-        bio=emp.bio,
-        resume=emp.resume,
-        created_at=emp.created_at,
-        user_email=current_user.email,
-        user_role=current_user.role.value,
-        is_active=current_user.is_active,
-    )
-
-
-@router.put("/me/profile", response_model=EmployeeResponse)
-def update_my_profile(
-    emp_data: EmployeeSelfUpdate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Update current user's employee profile (bio, resume, phone, address)."""
-    emp = db.query(Employee).filter(Employee.user_id == current_user.id).first()
-    if not emp:
-        raise HTTPException(status_code=404, detail="No employee profile found")
-
-    update_data = emp_data.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(emp, key, value)
-
-    db.commit()
-    db.refresh(emp)
-    return emp

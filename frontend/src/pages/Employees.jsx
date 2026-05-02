@@ -170,7 +170,7 @@ export default function Employees() {
           <div
             key={emp.id}
             className="emp-card"
-            onClick={() => hasRole('admin', 'payroll_officer') ? navigate(`/employees/${emp.id}`) : setViewEmployee(emp)}
+            onClick={() => hasRole('admin', 'hr_officer') ? navigate(`/employees/${emp.id}`) : setViewEmployee(emp)}
             tabIndex={0}
             role="button"
             aria-label={`View ${emp.first_name} ${emp.last_name}`}
@@ -235,10 +235,12 @@ export default function Employees() {
                 <HiOutlineCalendar />
                 <div><span>Date of Joining</span><strong>{viewEmployee.date_of_joining}</strong></div>
               </div>
+              {hasRole('admin', 'payroll_officer') && (
               <div className="emp-detail-row">
                 <HiOutlineCurrencyDollar />
                 <div><span>Basic Salary</span><strong>₹{viewEmployee.basic_salary?.toLocaleString()}</strong></div>
               </div>
+              )}
               <div className="emp-detail-row">
                 <HiOutlinePhone />
                 <div><span>Phone</span><strong>{viewEmployee.phone || '—'}</strong></div>
