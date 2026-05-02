@@ -55,6 +55,45 @@ def _compute_duration_minutes(login: datetime, logout: datetime) -> float:
     return max(delta.total_seconds() / 60.0, 0.0)
 
 
+def _compute_total_minutes_from_intervals(sessions: list, open_session_end: Optional[datetime] = None) -> float:
+    """
+    Given a list of AttendanceSession objects, merge overlapping intervals
+    and compute the true total duration in minutes. 
+    If open_session_end is provided, it is used as the end time for any session with no logout_time.
+    """
+    intervals = []
+    for s in sessions:
+        start = s.login_time
+        end = s.logout_time
+        if end is None:
+            if open_session_end is None:
+                continue
+            end = open_session_end
+        intervals.append([start, end])
+        
+    if not intervals:
+        return 0.0
+
+    intervals.sort(key=lambda x: x[0])
+    
+    merged_intervals = []
+    for start, end in intervals:
+        if not merged_intervals:
+            merged_intervals.append([start, end])
+        else:
+            last_start, last_end = merged_intervals[-1]
+            if start <= last_end:
+                merged_intervals[-1][1] = max(last_end, end)
+            else:
+                merged_intervals.append([start, end])
+
+    total_minutes = 0.0
+    for start, end in merged_intervals:
+        total_minutes += _compute_duration_minutes(start, end)
+        
+    return total_minutes
+
+
 def _has_approved_leave(db: DBSession, employee_id: int, target_date: date) -> bool:
     """Check if employee has an approved leave request covering target_date."""
     from app.models.leave import LeaveRequest, LeaveStatus
@@ -89,7 +128,7 @@ def _recompute_daily_summary(db: DBSession, employee_id: int, target_date: date)
         AttendanceSession.logout_time.isnot(None),
     ).all()
 
-    total_minutes = sum(s.duration_minutes or 0.0 for s in sessions)
+    total_minutes = _compute_total_minutes_from_intervals(sessions)
     total_hours = total_minutes / 60.0
 
     # Add +1 hour lunch break when employee has worked at least 4 hours
@@ -257,26 +296,29 @@ def logout_session(
     now = _utcnow()
     today = now.date()
 
-    # Find the most recent open session (may span today or be cross-day)
-    open_session = db.query(AttendanceSession).filter(
+    # Find all open sessions (may span today or be cross-day)
+    open_sessions = db.query(AttendanceSession).filter(
         AttendanceSession.employee_id == employee_id,
         AttendanceSession.logout_time.is_(None),
-    ).order_by(AttendanceSession.login_time.desc()).first()
+    ).all()
 
-    if not open_session:
+    if not open_sessions:
         return None, "No active session found. Please login first."
 
-    open_session.logout_time = now
-    open_session.duration_minutes = _compute_duration_minutes(
-        open_session.login_time, now
-    )
+    for open_session in open_sessions:
+        open_session.logout_time = now
+        open_session.duration_minutes = _compute_duration_minutes(
+            open_session.login_time, now
+        )
+    
     db.commit()
-    db.refresh(open_session)
+    
+    # Recompute daily summary for the session's date (using the last closed session's date)
+    for open_session in open_sessions:
+        db.refresh(open_session)
+        _recompute_daily_summary(db, employee_id, open_session.date)
 
-    # Recompute daily summary for the session's date
-    _recompute_daily_summary(db, employee_id, open_session.date)
-
-    return open_session, None
+    return open_sessions[-1], None
 
 
 def get_today_status(db: DBSession, employee_id: int) -> dict:
@@ -309,13 +351,10 @@ def get_today_status(db: DBSession, employee_id: int) -> dict:
     last_completed = [s for s in sessions if s.logout_time is not None]
     check_out_time = last_completed[-1].logout_time.isoformat() if last_completed and not open_session else None
 
-    # Compute raw working hours from all completed sessions + live elapsed
-    total_minutes = sum(s.duration_minutes or 0.0 for s in sessions if s.logout_time is not None)
-    # If there's an active session, add elapsed time so far
-    if open_session:
-        now = _utcnow()
-        elapsed = _compute_duration_minutes(open_session.login_time, now)
-        total_minutes += elapsed
+    # Compute raw working hours by merging intervals
+    now = _utcnow()
+    total_minutes = _compute_total_minutes_from_intervals(sessions, open_session_end=now if open_session else None)
+    
     raw_hours = total_minutes / 60.0
     # Add +1 hour lunch break if worked >= 4 hours
     total_hours = raw_hours + 1.0 if raw_hours >= 4 else raw_hours

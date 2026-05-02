@@ -396,14 +396,7 @@ function TodayInfoCard({ isActive, checkInTime, checkOutTime, serverRawHours, ha
 
       {/* Action Button */}
       <div className="attendance-today-card__right">
-        {!isActive ? (
-          <button
-            className="btn btn--success btn--lg attendance-check-btn"
-            onClick={onCheckIn}
-          >
-            <HiOutlineLogin /> Check In
-          </button>
-        ) : (
+        {isActive && (
           <button
             className="btn btn--warning btn--lg attendance-check-btn"
             onClick={onCheckOut}
