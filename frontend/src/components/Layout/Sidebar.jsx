@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import logoImg from '../../assets/logo.png';
 import {
   HiOutlineHome, HiOutlineUsers, HiOutlineClipboardCheck,
   HiOutlineCalendar, HiOutlineCurrencyDollar, HiOutlineDocumentReport,
@@ -29,8 +30,7 @@ export default function Sidebar({ isOpen, onClose }) {
       <aside className={`sidebar ${isOpen ? 'sidebar--open' : ''}`}>
         <div className="sidebar__header">
           <div className="sidebar__logo">
-            <div className="sidebar__logo-icon">EP</div>
-            <span className="sidebar__logo-text">EmPay</span>
+            <img src={logoImg} alt="EmPay" className="sidebar__logo-img" />
           </div>
           <button className="sidebar__close" onClick={onClose}>
             <HiOutlineX />

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import logoImg from '../assets/logo.png';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -33,7 +34,7 @@ export default function Login() {
       </div>
       <div className="auth-card">
         <div className="auth-card__header">
-          <div className="auth-card__logo">EP</div>
+          <img src={logoImg} alt="EmPay" style={{ height: 56, margin: '0 auto 1rem', display: 'block' }} />
           <h1>Welcome to EmPay</h1>
           <p>Sign in to manage your workspace</p>
         </div>
