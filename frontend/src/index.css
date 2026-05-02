@@ -283,6 +283,32 @@ a:hover { text-decoration: underline; }
 .leave-balance-card__bar { height: 4px; background: var(--bg-tertiary); border-radius: 2px; overflow: hidden; }
 .leave-balance-card__bar > div { height: 100%; background: var(--warning); border-radius: 2px; transition: width 0.3s; }
 
+/* ── Time Off Filters ── */
+.to-filters { margin-bottom: 1.25rem; }
+.to-filters__group { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.to-filters__icon { font-size: 1.1rem; color: var(--text-muted); flex-shrink: 0; }
+.to-filters__group select { background: #fff; border: 1px solid var(--border); color: var(--text-primary); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.85rem; font-family: inherit; min-width: 160px; cursor: pointer; transition: border-color 0.2s; }
+.to-filters__group select:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px rgba(13,148,136,0.1); }
+
+/* ── Time Off Overview ── */
+.to-overview { display: flex; flex-direction: column; gap: 1.5rem; }
+.to-overview__section { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; box-shadow: var(--shadow-sm); }
+.to-overview__section h3 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-primary); }
+
+/* ── Leave Type Cards ── */
+.to-type-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
+.to-type-card { display: flex; align-items: center; gap: 0.85rem; background: var(--bg-tertiary); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 1rem 1.15rem; transition: all 0.2s; }
+.to-type-card:hover { border-color: var(--accent); box-shadow: 0 4px 12px rgba(13,148,136,0.08); }
+.to-type-card__icon { font-size: 1.5rem; flex-shrink: 0; }
+.to-type-card__info { display: flex; flex-direction: column; }
+.to-type-card__info strong { font-size: 0.88rem; font-weight: 600; color: var(--text-primary); }
+.to-type-card__info span { font-size: 0.75rem; color: var(--text-muted); }
+
+/* ── Leave Type List (in modal) ── */
+.to-type-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 350px; overflow-y: auto; }
+.to-type-list__item { display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1rem; background: var(--bg-tertiary); border: 1px solid var(--border-light); border-radius: var(--radius-sm); transition: background 0.15s; }
+.to-type-list__item:hover { background: #f0fdfa; }
+
 /* Payrun Summary */
 .payrun-summary { display: flex; gap: 1.5rem; margin-bottom: 1rem; }
 .payrun-summary__item { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1rem 1.5rem; }
