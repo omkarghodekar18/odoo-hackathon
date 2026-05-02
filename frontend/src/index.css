@@ -8,6 +8,7 @@
   --border: #e2e8f0; --border-light: #f1f5f9;
   --accent: #0d9488; --accent-hover: #0f766e; --accent-light: #ccfbf1;
   --success: #10b981; --warning: #f59e0b; --danger: #ef4444; --info: #3b82f6;
+  --color-success: #10b981; --color-warning: #f59e0b;
   --sidebar-width: 250px; --topbar-height: 64px;
   --radius: 12px; --radius-sm: 8px;
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.06); --shadow: 0 2px 8px rgba(0,0,0,0.08); --shadow-lg: 0 8px 24px rgba(0,0,0,0.1);
@@ -187,11 +188,89 @@ a:hover { text-decoration: underline; }
 .empty-state-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); }
 
 /* Attendance Action Card */
-.attendance-action-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; gap: 1rem; flex-wrap: wrap; box-shadow: var(--shadow-sm); }
-.attendance-action-card__info h3 { font-size: 1.1rem; font-weight: 600; }
-.attendance-action-card__info p { color: var(--text-secondary); font-size: 0.9rem; }
-.attendance-action-card__details { display: flex; gap: 1.5rem; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary); }
-.attendance-action-card__btns { display: flex; gap: 0.75rem; }
+.attendance-action-card {
+  background: #fff; border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 1.75rem; display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 1.25rem; gap: 1.5rem; flex-wrap: wrap; box-shadow: var(--shadow-sm);
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.attendance-action-card--active {
+  border-color: var(--success);
+  box-shadow: 0 0 0 4px rgba(16,185,129,0.08), var(--shadow-sm);
+}
+.attendance-action-card__info { flex: 1; display: flex; flex-direction: column; gap: 0.85rem; }
+.attendance-action-card__date { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; color: var(--text-secondary); }
+.attendance-action-card__date svg { color: var(--accent); font-size: 1.1rem; }
+
+/* Live timer */
+.attendance-timer { display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; }
+.attendance-timer__label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+.attendance-timer__clock {
+  font-size: 2.25rem; font-weight: 800; letter-spacing: 0.04em;
+  color: var(--success); font-variant-numeric: tabular-nums;
+  animation: pulse-green 2s infinite;
+}
+@keyframes pulse-green { 0%,100% { opacity:1; } 50% { opacity:0.75; } }
+.attendance-timer__since { font-size: 0.78rem; color: var(--text-muted); }
+
+/* Stats row */
+.attendance-stats-row { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.attendance-stat { display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; }
+.attendance-stat__val { font-size: 1.15rem; font-weight: 700; color: var(--text-primary); }
+.attendance-stat__lbl { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+
+/* Session accordion */
+.sessions-accordion { margin-top: 0.25rem; }
+.sessions-accordion__toggle {
+  display: flex; align-items: center; gap: 0.5rem;
+  background: var(--bg-tertiary); border: 1px solid var(--border);
+  color: var(--text-secondary); font-size: 0.8rem; font-weight: 600;
+  padding: 0.35rem 0.75rem; border-radius: 20px; cursor: pointer;
+  font-family: inherit; transition: all 0.2s;
+}
+.sessions-accordion__toggle:hover { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
+.sessions-accordion__body { margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; }
+
+/* Session row */
+.session-row {
+  display: flex; align-items: center; gap: 0.6rem;
+  font-size: 0.82rem; padding: 0.4rem 0.6rem;
+  background: var(--bg-tertiary); border-radius: var(--radius-sm);
+}
+.session-row__index { font-weight: 700; color: var(--text-muted); min-width: 1.5rem; }
+.session-row__time { display: flex; align-items: center; gap: 0.3rem; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+.session-row__arrow { color: var(--text-muted); }
+.session-row__dur { margin-left: auto; font-weight: 600; color: var(--accent); }
+
+/* Action buttons */
+.attendance-action-card__btns { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; min-width: 160px; }
+.attendance-action-card__hint { font-size: 0.73rem; color: var(--text-muted); text-align: center; max-width: 180px; }
+.btn--lg { padding: 0.75rem 1.75rem; font-size: 1rem; border-radius: 10px; }
+.btn--sm { padding: 0.4rem 0.85rem; font-size: 0.8rem; }
+.btn--xs { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+.btn--success:hover { background: #059669; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16,185,129,0.3); }
+.btn--warning:hover { background: #d97706; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(245,158,11,0.3); }
+
+/* Legend */
+.attendance-legend {
+  display: flex; flex-wrap: wrap; gap: 0.75rem 1.5rem;
+  margin-bottom: 1.25rem; padding: 0.75rem 1rem;
+  background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.attendance-legend__item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.78rem; color: var(--text-secondary); }
+
+/* Hours badge in table */
+.hours-badge { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.sessions-count { font-size: 0.8rem; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 999px; padding: 0.1rem 0.55rem; font-weight: 600; color: var(--text-secondary); }
+
+/* Table expand */
+.table-row--clickable { cursor: default; }
+.session-drill-row td { background: #f8fffe; padding: 0.5rem 1rem 1rem 2.5rem; }
+.session-drill-body { display: flex; flex-direction: column; gap: 0.3rem; }
+
+/* Badge secondary */
+.badge--secondary { background: var(--bg-tertiary); color: var(--text-muted); }
+
 
 /* Leave Balance */
 .leave-balance-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }

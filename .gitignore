@@ -1,7 +1,7 @@
 # Python cache
 __pycache__/
 *.py[cod]
-
+*.db
 # Virtual environments
 venv/
 .env/

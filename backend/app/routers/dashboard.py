@@ -32,7 +32,12 @@ def get_dashboard_stats(current_user: User = Depends(get_current_user), db: Sess
         emp = db.query(Employee).filter(Employee.user_id == current_user.id).first()
         my_attendance_this_month = 0
         if emp:
-            my_attendance_this_month = db.query(Attendance).filter(Attendance.employee_id == emp.id, func.extract('month', Attendance.date) == today.month, func.extract('year', Attendance.date) == today.year, Attendance.status == AttendanceStatus.PRESENT).count()
+            my_attendance_this_month = db.query(Attendance).filter(
+                Attendance.employee_id == emp.id,
+                func.strftime('%m', Attendance.date) == f"{today.month:02d}",
+                func.strftime('%Y', Attendance.date) == str(today.year),
+                Attendance.status == AttendanceStatus.PRESENT
+            ).count()
         my_pending_leaves = db.query(LeaveRequest).filter(LeaveRequest.employee_id == emp.id, LeaveRequest.status == LeaveStatus.PENDING).count() if emp else 0
         return {"total_employees": total_employees, "today_present": today_present, "my_attendance_this_month": my_attendance_this_month, "my_pending_leaves": my_pending_leaves, "role": "employee"}
 
@@ -44,13 +49,20 @@ def get_attendance_chart(current_user: User = Depends(get_current_user), db: Ses
     today = date.today()
     emp_ids = _company_employees(db, current_user.company_id)
     data = []
+    months_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     for m in range(1, 13):
-        base = db.query(Attendance).filter(func.extract('month', Attendance.date) == m, func.extract('year', Attendance.date) == today.year, Attendance.employee_id.in_(emp_ids)) if emp_ids else None
-        present = base.filter(Attendance.status == AttendanceStatus.PRESENT).count() if base else 0
-        absent = base.filter(Attendance.status == AttendanceStatus.ABSENT).count() if base else 0
-        on_leave = base.filter(Attendance.status == AttendanceStatus.ON_LEAVE).count() if base else 0
-        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-        data.append({"month": months[m-1], "present": present, "absent": absent, "on_leave": on_leave})
+        if emp_ids:
+            base = db.query(Attendance).filter(
+                func.strftime('%m', Attendance.date) == f"{m:02d}",
+                func.strftime('%Y', Attendance.date) == str(today.year),
+                Attendance.employee_id.in_(emp_ids)
+            )
+            present = base.filter(Attendance.status == AttendanceStatus.PRESENT).count()
+            absent = base.filter(Attendance.status == AttendanceStatus.ABSENT).count()
+            on_leave = base.filter(Attendance.status == AttendanceStatus.ON_LEAVE).count()
+        else:
+            present = absent = on_leave = 0
+        data.append({"month": months_labels[m-1], "present": present, "absent": absent, "on_leave": on_leave})
     return data
 
 

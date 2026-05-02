@@ -31,17 +31,32 @@ export function AuthProvider({ children }) {
       localStorage.setItem('empay_company', JSON.stringify(companyData));
       setCompany(companyData);
     }
+
+    // Fire attendance login session (non-blocking — only for employee role)
+    try {
+      await API.post('/attendance/login', {}, {
+        headers: { Authorization: `Bearer ${access_token}` },
+      });
+    } catch (_) {
+      // Silently ignore if no employee profile or already logged in
+    }
+
     return userData;
   };
 
   const registerCompany = async (formData) => {
-    // Note: formData should be sent as multipart/form-data
-    // Axios handles this automatically when a FormData object is passed
     const res = await API.post('/auth/register', formData);
     return res.data;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // Fire attendance logout session before clearing token (non-blocking)
+    try {
+      await API.post('/attendance/logout');
+    } catch (_) {
+      // Silently ignore — no open session or no employee profile
+    }
+
     localStorage.removeItem('empay_token');
     localStorage.removeItem('empay_user');
     localStorage.removeItem('empay_company');
