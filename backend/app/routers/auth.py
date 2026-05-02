@@ -17,6 +17,38 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     )
     if error:
         raise HTTPException(status_code=400, detail=error)
+        
+    # Auto-create employee profile so they show up in the directory
+    from app.models.employee import Employee
+    from datetime import date
+    
+    parts = user_data.full_name.split()
+    first_name = parts[0] if parts else "Unknown"
+    last_name = parts[1] if len(parts) > 1 else ""
+    
+    # Generate auto emp_code like OIJODO20240001
+    f2 = (first_name[:2] if len(first_name) >= 2 else first_name + "X").upper()
+    l2 = (last_name[:2] if len(last_name) >= 2 else (last_name + "X") if last_name else "XX").upper()
+    year = date.today().year
+    
+    count = db.query(Employee).count() + 1
+    serial = f"{count:04d}"
+    
+    emp_code = f"OI{f2}{l2}{year}{serial}"
+    
+    new_emp = Employee(
+        user_id=user.id,
+        emp_code=emp_code,
+        first_name=first_name,
+        last_name=last_name,
+        department="TBD",
+        designation="TBD",
+        date_of_joining=date.today(),
+        basic_salary=0.0
+    )
+    db.add(new_emp)
+    db.commit()
+    
     return user
 
 

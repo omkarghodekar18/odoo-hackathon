@@ -40,8 +40,8 @@ export default function Login() {
         </div>
         <form onSubmit={handleSubmit} className="auth-card__form">
           <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@empay.com" required />
+            <label htmlFor="email">Login ID / Email</label>
+            <input id="email" type="text" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@empay.com or Login ID" required />
           </div>
           <div className="form-group">
             <label htmlFor="password">Password</label>

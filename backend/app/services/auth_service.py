@@ -22,9 +22,15 @@ def register_user(db: Session, email: str, password: str, full_name: str, role: 
     return user, None
 
 
-def authenticate_user(db: Session, email: str, password: str):
-    """Authenticate user and return token."""
-    user = db.query(User).filter(User.email == email).first()
+def authenticate_user(db: Session, email_or_id: str, password: str):
+    """Authenticate user and return token. Supports email or Employee Login ID."""
+    user = db.query(User).filter(User.email == email_or_id).first()
+    
+    if not user:
+        employee = db.query(Employee).filter(Employee.emp_code == email_or_id).first()
+        if employee:
+            user = db.query(User).filter(User.id == employee.user_id).first()
+
     if not user or not verify_password(password, user.hashed_password):
         return None, None
 
