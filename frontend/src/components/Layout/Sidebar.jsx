@@ -24,7 +24,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
   const filteredNav = navItems.filter(item => item.roles.includes(user?.role));
 
-  const apiBaseUrl = 'http://127.0.0.1:8000'; // Assuming standard local dev setup
+  const apiBaseUrl = 'http://localhost:8000'; // Assuming standard local dev setup
 
   return (
     <>
@@ -33,13 +33,10 @@ export default function Sidebar({ isOpen, onClose }) {
         <div className="sidebar__header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div className="sidebar__logo" style={{ flexShrink: 0 }}>
             {company?.logo ? (
-              <img src={`${apiBaseUrl}${company.logo}`} alt={company.name} className="sidebar__logo-img" style={{ borderRadius: '4px', objectFit: 'contain', width: '32px', height: '32px' }} />
+              <img src={`${apiBaseUrl}${company.logo}`} alt={company?.name || 'Company'} className="sidebar__logo-img" style={{ borderRadius: '4px', objectFit: 'contain', width: '120px', maxHeight: '48px' }} />
             ) : (
-              <img src={logoImg} alt="EmPay" className="sidebar__logo-img" style={{ width: '32px', height: '32px' }} />
+              <img src={logoImg} alt="EmPay" className="sidebar__logo-img" style={{ width: '120px', maxHeight: '48px', objectFit: 'contain' }} />
             )}
-          </div>
-          <div style={{ fontWeight: '600', fontSize: '1.1rem', color: 'var(--text-100)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {company?.name || 'EmPay HRMS'}
           </div>
           <button className="sidebar__close" onClick={onClose} style={{ marginLeft: 'auto' }}>
             <HiOutlineX />

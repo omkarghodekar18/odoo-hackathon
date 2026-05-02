@@ -96,7 +96,7 @@ export default function Topbar({ onMenuClick }) {
       </button>
 
       <div className="topbar__title">
-        <h1>EmPay HRMS</h1>
+        {/* EmPay HRMS title removed as requested */}
       </div>
 
       <div className="topbar__right">
