@@ -41,7 +41,16 @@ a:hover { text-decoration: underline; }
 .demo-btn { background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-primary); padding: 0.4rem; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.8rem; transition: all 0.2s; font-family: inherit; }
 .demo-btn:hover { background: var(--accent); border-color: var(--accent); color: white; }
 
-/* Form Elements */
+/* Logo Upload */
+.logo-upload-container { display: flex; justify-content: center; margin-bottom: 1rem; }
+.logo-dropzone { width: 100%; max-width: 200px; padding: 1.5rem; border: 2px dashed var(--border); border-radius: var(--radius); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer; color: var(--text-muted); transition: all 0.2s; background: var(--bg-tertiary); }
+.logo-dropzone:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.logo-dropzone span { font-size: 0.85rem; font-weight: 500; }
+.logo-dropzone small { font-size: 0.7rem; }
+.logo-preview-wrapper { position: relative; width: 120px; height: 120px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+.logo-preview-img { width: 100%; height: 100%; object-fit: contain; background: white; }
+.logo-remove-btn { position: absolute; top: 0.25rem; right: 0.25rem; width: 24px; height: 24px; border-radius: 50%; background: rgba(0,0,0,0.5); color: white; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s; }
+.logo-remove-btn:hover { background: var(--danger); }/* Form Elements */
 .form-group { display: flex; flex-direction: column; gap: 0.35rem; }
 .form-group label { font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); }
 .form-group input, .form-group select, .form-group textarea { width: 100%; background: #fff; border: 1px solid var(--border); color: var(--text-primary); padding: 0.65rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.9rem; font-family: inherit; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }

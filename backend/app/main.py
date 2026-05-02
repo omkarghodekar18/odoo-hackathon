@@ -1,5 +1,7 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.config import settings
 from app.database import engine, Base
 from app.models import *  # noqa: F401, F403 - Import all models to register them
@@ -7,6 +9,10 @@ from app.routers import auth, employees, attendance, leave, payroll, dashboard
 
 # Create all tables
 Base.metadata.create_all(bind=engine)
+
+# Create uploads directory
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -21,6 +27,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount uploads for serving logo files
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # Include routers
 app.include_router(auth.router, prefix=settings.API_PREFIX)

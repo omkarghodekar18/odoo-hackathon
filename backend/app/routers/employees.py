@@ -19,8 +19,8 @@ def list_employees(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """List all employees. Accessible by Admin, HR, Payroll."""
-    query = db.query(Employee)
+    """List all employees in the same company."""
+    query = db.query(Employee).filter(Employee.company_id == current_user.company_id)
     if department:
         query = query.filter(Employee.department == department)
     employees = query.all()
@@ -54,24 +54,37 @@ def create_employee(
     current_user: User = Depends(require_roles("admin", "hr_officer")),
     db: Session = Depends(get_db)
 ):
-    """Create employee profile. Admin/HR only."""
+    """Create employee profile. Admin/HR only. Employee is scoped to admin's company."""
     existing = db.query(Employee).filter(Employee.emp_code == emp_data.emp_code).first()
     if existing:
         raise HTTPException(status_code=400, detail="Employee code already exists")
 
-    # Create the user account first
+    # Generate email if not provided
+    email = emp_data.email
+    if not email:
+        domain = current_user.email.split("@")[-1] if "@" in current_user.email else "company.com"
+        base_email = f"{emp_data.first_name.lower()}.{emp_data.last_name.lower()}@{domain}"
+        email = base_email
+        counter = 1
+        # ensure unique email
+        while db.query(User).filter(User.email == email).first():
+            email = f"{emp_data.first_name.lower()}.{emp_data.last_name.lower()}{counter}@{domain}"
+            counter += 1
+
+    # Create the user account first, linked to admin's company
     user, error = register_user(
         db, 
-        email=emp_data.email, 
+        email=email, 
         password=emp_data.password, 
         full_name=f"{emp_data.first_name} {emp_data.last_name}",
-        role="employee"
+        role="employee",
+        company_id=current_user.company_id,
     )
     if error:
         raise HTTPException(status_code=400, detail=error)
 
     emp_dict = emp_data.model_dump(exclude={"email", "password"})
-    employee = Employee(**emp_dict, user_id=user.id)
+    employee = Employee(**emp_dict, user_id=user.id, company_id=current_user.company_id)
     db.add(employee)
     db.commit()
     db.refresh(employee)
@@ -98,8 +111,11 @@ def get_employee(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get employee details."""
-    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    """Get employee details (must be in same company)."""
+    emp = db.query(Employee).filter(
+        Employee.id == employee_id,
+        Employee.company_id == current_user.company_id
+    ).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
 
@@ -130,8 +146,11 @@ def update_employee(
     current_user: User = Depends(require_roles("admin", "hr_officer")),
     db: Session = Depends(get_db)
 ):
-    """Update employee. Admin/HR only."""
-    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    """Update employee. Admin/HR only. Scoped to company."""
+    emp = db.query(Employee).filter(
+        Employee.id == employee_id,
+        Employee.company_id == current_user.company_id
+    ).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
 
@@ -150,9 +169,11 @@ def delete_employee(
     current_user: User = Depends(require_roles("admin")),
     db: Session = Depends(get_db)
 ):
-    """Delete employee. Admin only."""
-
-    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    """Delete employee. Admin only. Scoped to company."""
+    emp = db.query(Employee).filter(
+        Employee.id == employee_id,
+        Employee.company_id == current_user.company_id
+    ).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
 

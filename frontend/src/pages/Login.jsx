@@ -57,10 +57,10 @@ export default function Login() {
         <div className="auth-card__demo">
           <p>Demo Credentials:</p>
           <div className="auth-card__demo-grid">
-            <button type="button" onClick={() => { setEmail('admin@empay.com'); setPassword('admin123'); }} className="demo-btn">Admin</button>
-            <button type="button" onClick={() => { setEmail('hr@empay.com'); setPassword('hr123'); }} className="demo-btn">HR</button>
-            <button type="button" onClick={() => { setEmail('payroll@empay.com'); setPassword('payroll123'); }} className="demo-btn">Payroll</button>
-            <button type="button" onClick={() => { setEmail('john@empay.com'); setPassword('emp123'); }} className="demo-btn">Employee</button>
+            <button type="button" onClick={() => { setEmail('admin@acmecorp.com'); setPassword('admin123'); }} className="demo-btn">Admin</button>
+            <button type="button" onClick={() => { setEmail('hr@acmecorp.com'); setPassword('hr123'); }} className="demo-btn">HR</button>
+            <button type="button" onClick={() => { setEmail('payroll@acmecorp.com'); setPassword('payroll123'); }} className="demo-btn">Payroll</button>
+            <button type="button" onClick={() => { setEmail('john.doe@acmecorp.com'); setPassword('emp123'); }} className="demo-btn">Employee</button>
           </div>
         </div>
       </div>

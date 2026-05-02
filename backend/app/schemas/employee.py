@@ -16,7 +16,7 @@ class EmployeeBase(BaseModel):
 
 
 class EmployeeCreate(EmployeeBase):
-    email: str
+    email: Optional[str] = None
     password: str
 
 

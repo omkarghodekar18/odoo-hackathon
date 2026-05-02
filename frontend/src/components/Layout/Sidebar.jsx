@@ -19,20 +19,29 @@ const navItems = [
 ];
 
 export default function Sidebar({ isOpen, onClose }) {
-  const { user, logout } = useAuth();
+  const { user, company, logout } = useAuth();
   const location = useLocation();
 
   const filteredNav = navItems.filter(item => item.roles.includes(user?.role));
+
+  const apiBaseUrl = 'http://127.0.0.1:8000'; // Assuming standard local dev setup
 
   return (
     <>
       {isOpen && <div className="sidebar-overlay" onClick={onClose} />}
       <aside className={`sidebar ${isOpen ? 'sidebar--open' : ''}`}>
-        <div className="sidebar__header">
-          <div className="sidebar__logo">
-            <img src={logoImg} alt="EmPay" className="sidebar__logo-img" />
+        <div className="sidebar__header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div className="sidebar__logo" style={{ flexShrink: 0 }}>
+            {company?.logo ? (
+              <img src={`${apiBaseUrl}${company.logo}`} alt={company.name} className="sidebar__logo-img" style={{ borderRadius: '4px', objectFit: 'contain', width: '32px', height: '32px' }} />
+            ) : (
+              <img src={logoImg} alt="EmPay" className="sidebar__logo-img" style={{ width: '32px', height: '32px' }} />
+            )}
           </div>
-          <button className="sidebar__close" onClick={onClose}>
+          <div style={{ fontWeight: '600', fontSize: '1.1rem', color: 'var(--text-100)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {company?.name || 'EmPay HRMS'}
+          </div>
+          <button className="sidebar__close" onClick={onClose} style={{ marginLeft: 'auto' }}>
             <HiOutlineX />
           </button>
         </div>

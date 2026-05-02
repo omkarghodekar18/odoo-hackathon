@@ -113,9 +113,10 @@ export default function Employees() {
             <h3>{editing ? 'Edit Employee' : 'Add Employee'}</h3>
             <form onSubmit={handleSubmit}>
               {!editing && (
-                <div className="form-row">
-                  <div className="form-group"><label>Login Email</label><input type="email" value={form.email} onChange={update('email')} required /></div>
-                  <div className="form-group"><label>Login Password</label><input type="password" value={form.password} onChange={update('password')} required /></div>
+                <div className="form-group">
+                  <label>Login Password</label>
+                  <input type="password" value={form.password} onChange={update('password')} required />
+                  <small style={{color: 'var(--text-muted)'}}>Email will be auto-generated based on name & company.</small>
                 </div>
               )}
               {!editing && <div className="form-group"><label>Employee Code</label><input value={form.emp_code} onChange={update('emp_code')} required /></div>}

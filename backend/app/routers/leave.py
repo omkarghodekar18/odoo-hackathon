@@ -76,7 +76,9 @@ def list_leave_requests(status_filter: str = None, current_user: User = Depends(
             return []
         query = db.query(LeaveRequest).filter(LeaveRequest.employee_id == emp.id)
     else:
-        query = db.query(LeaveRequest)
+        # Scope to company employees
+        company_emp_ids = [e.id for e in db.query(Employee.id).filter(Employee.company_id == current_user.company_id).all()]
+        query = db.query(LeaveRequest).filter(LeaveRequest.employee_id.in_(company_emp_ids)) if company_emp_ids else db.query(LeaveRequest).filter(False)
     if status_filter:
         query = query.filter(LeaveRequest.status == status_filter)
     requests = query.order_by(LeaveRequest.created_at.desc()).all()

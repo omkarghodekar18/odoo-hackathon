@@ -18,11 +18,13 @@ class Employee(Base):
     basic_salary = Column(Float, default=0.0)
     phone = Column(String, nullable=True)
     address = Column(String, nullable=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     user = relationship("User", back_populates="employee")
+    company = relationship("Company", back_populates="employees")
     attendance_records = relationship("Attendance", back_populates="employee")
     leave_balances = relationship("LeaveBalance", back_populates="employee")
     leave_requests = relationship("LeaveRequest", back_populates="employee")

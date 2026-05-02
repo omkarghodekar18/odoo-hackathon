@@ -13,13 +13,20 @@ from app.utils.security import get_current_user
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 
+def _company_employees(db, company_id):
+    """Get employee IDs for a company."""
+    return [e.id for e in db.query(Employee.id).filter(Employee.company_id == company_id).all()]
+
+
 @router.get("/stats")
 def get_dashboard_stats(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     today = date.today()
-    total_employees = db.query(Employee).count()
-    today_present = db.query(Attendance).filter(Attendance.date == today, Attendance.status == AttendanceStatus.PRESENT).count()
-    pending_leaves = db.query(LeaveRequest).filter(LeaveRequest.status == LeaveStatus.PENDING).count()
-    total_payroll = db.query(func.sum(Payslip.net_pay)).scalar() or 0
+    emp_ids = _company_employees(db, current_user.company_id)
+
+    total_employees = len(emp_ids)
+    today_present = db.query(Attendance).filter(Attendance.date == today, Attendance.status == AttendanceStatus.PRESENT, Attendance.employee_id.in_(emp_ids)).count() if emp_ids else 0
+    pending_leaves = db.query(LeaveRequest).filter(LeaveRequest.status == LeaveStatus.PENDING, LeaveRequest.employee_id.in_(emp_ids)).count() if emp_ids else 0
+    total_payroll = db.query(func.sum(Payslip.net_pay)).filter(Payslip.employee_id.in_(emp_ids)).scalar() or 0 if emp_ids else 0
 
     if current_user.role.value == "employee":
         emp = db.query(Employee).filter(Employee.user_id == current_user.id).first()
@@ -35,11 +42,13 @@ def get_dashboard_stats(current_user: User = Depends(get_current_user), db: Sess
 @router.get("/attendance-chart")
 def get_attendance_chart(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     today = date.today()
+    emp_ids = _company_employees(db, current_user.company_id)
     data = []
     for m in range(1, 13):
-        present = db.query(Attendance).filter(func.extract('month', Attendance.date) == m, func.extract('year', Attendance.date) == today.year, Attendance.status == AttendanceStatus.PRESENT).count()
-        absent = db.query(Attendance).filter(func.extract('month', Attendance.date) == m, func.extract('year', Attendance.date) == today.year, Attendance.status == AttendanceStatus.ABSENT).count()
-        on_leave = db.query(Attendance).filter(func.extract('month', Attendance.date) == m, func.extract('year', Attendance.date) == today.year, Attendance.status == AttendanceStatus.ON_LEAVE).count()
+        base = db.query(Attendance).filter(func.extract('month', Attendance.date) == m, func.extract('year', Attendance.date) == today.year, Attendance.employee_id.in_(emp_ids)) if emp_ids else None
+        present = base.filter(Attendance.status == AttendanceStatus.PRESENT).count() if base else 0
+        absent = base.filter(Attendance.status == AttendanceStatus.ABSENT).count() if base else 0
+        on_leave = base.filter(Attendance.status == AttendanceStatus.ON_LEAVE).count() if base else 0
         months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         data.append({"month": months[m-1], "present": present, "absent": absent, "on_leave": on_leave})
     return data
@@ -47,9 +56,13 @@ def get_attendance_chart(current_user: User = Depends(get_current_user), db: Ses
 
 @router.get("/leave-chart")
 def get_leave_chart(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    approved = db.query(LeaveRequest).filter(LeaveRequest.status == LeaveStatus.APPROVED).count()
-    rejected = db.query(LeaveRequest).filter(LeaveRequest.status == LeaveStatus.REJECTED).count()
-    pending = db.query(LeaveRequest).filter(LeaveRequest.status == LeaveStatus.PENDING).count()
+    emp_ids = _company_employees(db, current_user.company_id)
+    if emp_ids:
+        approved = db.query(LeaveRequest).filter(LeaveRequest.status == LeaveStatus.APPROVED, LeaveRequest.employee_id.in_(emp_ids)).count()
+        rejected = db.query(LeaveRequest).filter(LeaveRequest.status == LeaveStatus.REJECTED, LeaveRequest.employee_id.in_(emp_ids)).count()
+        pending = db.query(LeaveRequest).filter(LeaveRequest.status == LeaveStatus.PENDING, LeaveRequest.employee_id.in_(emp_ids)).count()
+    else:
+        approved = rejected = pending = 0
     return [{"name": "Approved", "value": approved, "color": "#10b981"}, {"name": "Rejected", "value": rejected, "color": "#f43f5e"}, {"name": "Pending", "value": pending, "color": "#f59e0b"}]
 
 
@@ -57,12 +70,14 @@ def get_leave_chart(current_user: User = Depends(get_current_user), db: Session 
 def get_payroll_summary(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role.value not in ["admin", "payroll_officer"]:
         raise HTTPException(status_code=403, detail="Access denied")
-    payruns = db.query(Payrun).order_by(Payrun.year.desc(), Payrun.month.desc()).limit(12).all()
+    payruns = db.query(Payrun).filter(Payrun.created_by.in_(
+        [u.id for u in db.query(User.id).filter(User.company_id == current_user.company_id).all()]
+    )).order_by(Payrun.year.desc(), Payrun.month.desc()).limit(12).all()
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     return [{"month": months[p.month-1], "year": p.year, "total": p.total_amount, "status": p.status.value} for p in payruns]
 
 
 @router.get("/department-stats")
 def get_department_stats(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    departments = db.query(Employee.department, func.count(Employee.id)).group_by(Employee.department).all()
+    departments = db.query(Employee.department, func.count(Employee.id)).filter(Employee.company_id == current_user.company_id).group_by(Employee.department).all()
     return [{"department": d[0], "count": d[1]} for d in departments]

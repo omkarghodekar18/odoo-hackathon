@@ -1,4 +1,5 @@
-from app.models.user import User
+from app.models.user import User, UserRole
+from app.models.company import Company
 from app.models.employee import Employee
 from app.models.attendance import Attendance
 from app.models.leave import LeaveType, LeaveBalance, LeaveRequest
