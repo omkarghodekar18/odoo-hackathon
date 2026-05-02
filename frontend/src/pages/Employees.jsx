@@ -281,7 +281,7 @@ export default function Employees() {
                 <div className="form-group"><label>Designation</label><input value={form.designation} onChange={update('designation')} required /></div>
               </div>
               <div className="form-row">
-                <div className="form-group"><label>Basic Salary (₹)</label><input type="number" value={form.basic_salary} onChange={update('basic_salary')} required /></div>
+                <div className="form-group"><label>Monthly CTC (₹)</label><input type="number" value={form.basic_salary} onChange={update('basic_salary')} required /></div>
                 {!editing && (
                   <div className="form-group"><label>Date of Joining</label><input type="date" value={form.date_of_joining} onChange={update('date_of_joining')} required /></div>
                 )}

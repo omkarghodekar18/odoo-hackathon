@@ -182,9 +182,11 @@ def get_employee_salary_info(
 ):
     """
     Get detailed salary breakdown for an employee.
-    Only accessible by admin and payroll_officer.
+    Uses SalaryStructure if available, otherwise defaults.
+    basic_salary field is treated as Monthly CTC.
     """
     from app.services.payroll_service import get_professional_tax
+    from app.models.salary_structure import SalaryStructure
 
     emp = db.query(Employee).filter(
         Employee.id == employee_id,
@@ -193,60 +195,114 @@ def get_employee_salary_info(
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
 
-    basic = emp.basic_salary or 0
-    hra = round(basic * 0.40, 2)
-    standard_allowance = round(basic * 0.0567, 2)
-    performance_bonus = round(basic * 0.0833, 2)
-    leave_travel_allowance = round(basic * 0.0833, 2)
+    ctc = emp.basic_salary or 0  # basic_salary = monthly CTC
 
-    # Fixed allowance = remainder to reach a round gross
-    sub_total = basic + hra + standard_allowance + performance_bonus + leave_travel_allowance
-    fixed_allowance = round(max(basic * 0.1167, 0), 2)
-    month_wage = round(sub_total + fixed_allowance, 2)
+    # Get custom structure or defaults
+    struct = db.query(SalaryStructure).filter(SalaryStructure.employee_id == emp.id).first()
+    basic_pct = struct.basic_pct if struct else 50.0
+    hra_pct = struct.hra_pct if struct else 20.0
+    sa_pct = struct.standard_allowance_pct if struct else 5.67
+    pb_pct = struct.performance_bonus_pct if struct else 8.33
+    lta_pct = struct.lta_pct if struct else 8.33
+    fa_pct = struct.fixed_allowance_pct if struct else 7.67
+    emp_pf_pct = struct.employee_pf_pct if struct else 12.0
+    empr_pf_pct = struct.employer_pf_pct if struct else 12.0
 
-    # PF
-    employee_pf = round(basic * 0.12, 2)
-    employer_pf = round(basic * 0.12, 2)
+    # Compute amounts from CTC
+    basic = round(ctc * basic_pct / 100, 2)
+    hra = round(ctc * hra_pct / 100, 2)
+    standard_allowance = round(ctc * sa_pct / 100, 2)
+    performance_bonus = round(ctc * pb_pct / 100, 2)
+    leave_travel_allowance = round(ctc * lta_pct / 100, 2)
+    fixed_allowance = round(ctc * fa_pct / 100, 2)
+    month_wage = ctc
+
+    # PF (based on basic component)
+    employee_pf = round(basic * emp_pf_pct / 100, 2)
+    employer_pf = round(basic * empr_pf_pct / 100, 2)
 
     # Tax
     professional_tax = get_professional_tax(month_wage)
 
-    # Percentages
-    def pct(val):
-        return round((val / month_wage) * 100, 2) if month_wage else 0
-
     return {
         "employee_id": emp.id,
         "employee_name": f"{emp.first_name} {emp.last_name}",
+        "monthly_ctc": ctc,
         "month_wage": month_wage,
         "yearly_wage": round(month_wage * 12, 2),
         "working_days_per_week": 5,
         "break_time_hours": 1,
         "salary_components": [
-            {"name": "Basic Salary", "amount": basic, "percentage": pct(basic),
-             "description": "Define Basic salary from company and compute it based on monthly target."},
-            {"name": "House Rent Allowance", "amount": hra, "percentage": pct(hra),
-             "description": "HRA provided to employees 40% of the basic salary."},
-            {"name": "Standard Allowance", "amount": standard_allowance, "percentage": pct(standard_allowance),
-             "description": "A standard allowance is a predetermined, fixed amount provided to employees."},
-            {"name": "Performance Bonus", "amount": performance_bonus, "percentage": pct(performance_bonus),
-             "description": "Variably earned and during payroll. The value defined by the company and calculated as a % of the basic salary."},
-            {"name": "Leave Travel Allowance", "amount": leave_travel_allowance, "percentage": pct(leave_travel_allowance),
+            {"key": "basic", "name": "Basic Salary", "amount": basic, "percentage": basic_pct,
+             "description": "Define Basic salary from company cost compute it based on monthly wages."},
+            {"key": "hra", "name": "House Rent Allowance", "amount": hra, "percentage": hra_pct,
+             "description": "HRA provided to employees 50% of the basic salary."},
+            {"key": "standard_allowance", "name": "Standard Allowance", "amount": standard_allowance, "percentage": sa_pct,
+             "description": "A standard allowance is a predetermined, fixed amount provided to employee as part of their salary."},
+            {"key": "performance_bonus", "name": "Performance Bonus", "amount": performance_bonus, "percentage": pb_pct,
+             "description": "Variable amount paid during payroll. The value defined by the company and calculated as a % of the basic salary."},
+            {"key": "lta", "name": "Leave Travel Allowance", "amount": leave_travel_allowance, "percentage": lta_pct,
              "description": "LTA is paid by the company to employees to cover their travel expenses, and calculated as a % of the basic salary."},
-            {"name": "Fixed Allowance", "amount": fixed_allowance, "percentage": pct(fixed_allowance),
+            {"key": "fixed_allowance", "name": "Fixed Allowance", "amount": fixed_allowance, "percentage": fa_pct,
              "description": "Fixed allowance portion of wages is determined after calculating all salary components."},
         ],
         "pf_contribution": {
-            "employee": {"amount": employee_pf, "percentage": 12.00,
+            "employee": {"amount": employee_pf, "percentage": emp_pf_pct,
                          "description": "PF is calculated based on the basic salary."},
-            "employer": {"amount": employer_pf, "percentage": 12.00,
+            "employer": {"amount": employer_pf, "percentage": empr_pf_pct,
                          "description": "PF is calculated based on the basic salary."},
         },
         "tax_deductions": {
             "professional_tax": {"amount": professional_tax,
-                                 "description": "Professional Tax deducted from the gross salary."},
+                                 "description": "Professional Tax deducted from the Gross salary."},
         },
     }
+
+
+@router.put("/{employee_id}/salary-info")
+def update_employee_salary_info(
+    employee_id: int,
+    payload: dict,
+    current_user: User = Depends(require_roles("admin", "payroll_officer")),
+    db: Session = Depends(get_db),
+):
+    """
+    Update employee CTC and/or salary structure percentages.
+    Accepts: monthly_ctc, basic_pct, hra_pct, standard_allowance_pct,
+    performance_bonus_pct, lta_pct, fixed_allowance_pct, employee_pf_pct, employer_pf_pct
+    """
+    from app.models.salary_structure import SalaryStructure
+
+    emp = db.query(Employee).filter(
+        Employee.id == employee_id,
+        Employee.company_id == current_user.company_id,
+    ).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    # Update CTC if provided
+    if "monthly_ctc" in payload and payload["monthly_ctc"] is not None:
+        emp.basic_salary = float(payload["monthly_ctc"])
+
+    # Get or create structure
+    struct = db.query(SalaryStructure).filter(SalaryStructure.employee_id == emp.id).first()
+    if not struct:
+        struct = SalaryStructure(employee_id=emp.id)
+        db.add(struct)
+
+    # Update percentages
+    pct_fields = [
+        "basic_pct", "hra_pct", "standard_allowance_pct",
+        "performance_bonus_pct", "lta_pct", "fixed_allowance_pct",
+        "employee_pf_pct", "employer_pf_pct",
+    ]
+    for field in pct_fields:
+        if field in payload and payload[field] is not None:
+            setattr(struct, field, float(payload[field]))
+
+    db.commit()
+    return {"message": "Salary structure updated successfully"}
+
 
 
 @router.get("/{employee_id}")
@@ -404,10 +460,10 @@ def get_employee(
 def update_employee(
     employee_id: int,
     emp_data: EmployeeUpdate,
-    current_user: User = Depends(require_roles("admin", "hr_officer")),
+    current_user: User = Depends(require_roles("admin", "hr_officer", "payroll_officer")),
     db: Session = Depends(get_db)
 ):
-    """Update employee. Admin/HR only. Scoped to company."""
+    """Update employee. Admin/HR/Payroll only. Scoped to company."""
     emp = db.query(Employee).filter(
         Employee.id == employee_id,
         Employee.company_id == current_user.company_id

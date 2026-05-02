@@ -1231,3 +1231,44 @@ a:hover { text-decoration: underline; }
   .ep-info-grid { grid-template-columns: 1fr; }
   .sal-summary { flex-direction: column; }
 }
+
+/* ── Editable Salary Toolbar & Inputs ── */
+.sal-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+.sal-toolbar__pct {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 0.35rem 0.75rem;
+  background: rgba(13,148,136,0.08);
+  border-radius: var(--radius-sm);
+}
+.sal-toolbar__pct--err {
+  color: var(--danger);
+  background: rgba(239,68,68,0.08);
+}
+.sal-inline-input {
+  width: 70px;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-family: inherit;
+  text-align: right;
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.sal-inline-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(13,148,136,0.12);
+}
+.sal-inline-input--lg {
+  width: 140px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  padding: 0.4rem 0.6rem;
+}
