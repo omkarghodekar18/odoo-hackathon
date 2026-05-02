@@ -173,11 +173,120 @@ def get_all_employee_status(
         })
     return result
 
+
+@router.get("/{employee_id}/salary-info")
+def get_employee_salary_info(
+    employee_id: int,
+    current_user: User = Depends(require_roles("admin", "payroll_officer")),
+    db: Session = Depends(get_db),
+):
+    """
+    Get detailed salary breakdown for an employee.
+    Only accessible by admin and payroll_officer.
+    """
+    from app.services.payroll_service import get_professional_tax
+
+    emp = db.query(Employee).filter(
+        Employee.id == employee_id,
+        Employee.company_id == current_user.company_id,
+    ).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    basic = emp.basic_salary or 0
+    hra = round(basic * 0.40, 2)
+    standard_allowance = round(basic * 0.0567, 2)
+    performance_bonus = round(basic * 0.0833, 2)
+    leave_travel_allowance = round(basic * 0.0833, 2)
+
+    # Fixed allowance = remainder to reach a round gross
+    sub_total = basic + hra + standard_allowance + performance_bonus + leave_travel_allowance
+    fixed_allowance = round(max(basic * 0.1167, 0), 2)
+    month_wage = round(sub_total + fixed_allowance, 2)
+
+    # PF
+    employee_pf = round(basic * 0.12, 2)
+    employer_pf = round(basic * 0.12, 2)
+
+    # Tax
+    professional_tax = get_professional_tax(month_wage)
+
+    # Percentages
+    def pct(val):
+        return round((val / month_wage) * 100, 2) if month_wage else 0
+
+    return {
+        "employee_id": emp.id,
+        "employee_name": f"{emp.first_name} {emp.last_name}",
+        "month_wage": month_wage,
+        "yearly_wage": round(month_wage * 12, 2),
+        "working_days_per_week": 5,
+        "break_time_hours": 1,
+        "salary_components": [
+            {"name": "Basic Salary", "amount": basic, "percentage": pct(basic),
+             "description": "Define Basic salary from company and compute it based on monthly target."},
+            {"name": "House Rent Allowance", "amount": hra, "percentage": pct(hra),
+             "description": "HRA provided to employees 40% of the basic salary."},
+            {"name": "Standard Allowance", "amount": standard_allowance, "percentage": pct(standard_allowance),
+             "description": "A standard allowance is a predetermined, fixed amount provided to employees."},
+            {"name": "Performance Bonus", "amount": performance_bonus, "percentage": pct(performance_bonus),
+             "description": "Variably earned and during payroll. The value defined by the company and calculated as a % of the basic salary."},
+            {"name": "Leave Travel Allowance", "amount": leave_travel_allowance, "percentage": pct(leave_travel_allowance),
+             "description": "LTA is paid by the company to employees to cover their travel expenses, and calculated as a % of the basic salary."},
+            {"name": "Fixed Allowance", "amount": fixed_allowance, "percentage": pct(fixed_allowance),
+             "description": "Fixed allowance portion of wages is determined after calculating all salary components."},
+        ],
+        "pf_contribution": {
+            "employee": {"amount": employee_pf, "percentage": 12.00,
+                         "description": "PF is calculated based on the basic salary."},
+            "employer": {"amount": employer_pf, "percentage": 12.00,
+                         "description": "PF is calculated based on the basic salary."},
+        },
+        "tax_deductions": {
+            "professional_tax": {"amount": professional_tax,
+                                 "description": "Professional Tax deducted from the gross salary."},
+        },
+    }
+
+
+@router.get("/{employee_id}")
+def get_employee_detail(
+    employee_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get a single employee's full detail."""
+    emp = db.query(Employee).filter(
+        Employee.id == employee_id,
+        Employee.company_id == current_user.company_id,
+    ).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    user = db.query(User).filter(User.id == emp.user_id).first()
+    return {
+        "id": emp.id,
+        "user_id": emp.user_id,
+        "emp_code": emp.emp_code,
+        "first_name": emp.first_name,
+        "last_name": emp.last_name,
+        "department": emp.department,
+        "designation": emp.designation,
+        "date_of_joining": str(emp.date_of_joining),
+        "basic_salary": emp.basic_salary,
+        "phone": emp.phone,
+        "address": emp.address,
+        "user_email": user.email if user else None,
+        "user_role": user.role.value if user else None,
+        "is_active": user.is_active if user else None,
+    }
+
+
 @router.post("/", response_model=EmployeeCreatedResponse)
 def create_employee(
     emp_data: EmployeeCreate,
     current_user: User = Depends(require_roles("admin", "hr_officer")),
     db: Session = Depends(get_db)
+
 ):
     """
     Create employee profile. Admin/HR only.

@@ -855,3 +855,379 @@ a:hover { text-decoration: underline; }
 .pwd-toggle:hover {
   color: var(--text-primary);
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   Employee Profile Page
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Header ── */
+.ep-header {
+  margin-bottom: 0.75rem;
+}
+
+/* ── Banner ── */
+.ep-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.75rem 2rem;
+  margin-bottom: 0;
+  box-shadow: var(--shadow-sm);
+}
+.ep-banner__left {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex: 1;
+}
+.ep-banner__avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #115e59);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+  box-shadow: 0 6px 18px rgba(13,148,136,0.2);
+}
+.ep-banner__name {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0 0 0.35rem;
+  color: var(--text-primary);
+}
+.ep-banner__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+.ep-banner__meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.ep-banner__right {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1.5rem;
+  flex-shrink: 0;
+}
+.ep-banner__field {
+  display: flex;
+  flex-direction: column;
+}
+.ep-banner__label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.ep-banner__value {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* ── Tabs ── */
+.ep-tabs {
+  display: flex;
+  gap: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+}
+.ep-tabs__btn {
+  flex: none;
+  padding: 0.85rem 1.5rem;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.ep-tabs__btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+.ep-tabs__btn--active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: rgba(13,148,136,0.04);
+}
+
+/* ── Tab Content ── */
+.ep-tab-content {
+  animation: fadeTabIn 0.2s ease-out;
+}
+@keyframes fadeTabIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Sections ── */
+.ep-section h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem;
+}
+.ep-text-muted {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ── Resume Tab ── */
+.ep-resume {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1.5rem;
+}
+.ep-resume__main,
+.ep-resume__side {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+}
+.ep-resume__main .ep-section + .ep-section {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-light);
+}
+
+/* ── Chips ── */
+.ep-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.ep-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.85rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.ep-chip--add {
+  background: none;
+  border: 1px dashed var(--border);
+  color: var(--accent);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.ep-chip--add:hover {
+  border-color: var(--accent);
+  background: rgba(13,148,136,0.05);
+}
+
+/* ── Private Info ── */
+.ep-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+.ep-info-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.15rem;
+  transition: box-shadow 0.15s;
+}
+.ep-info-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+}
+.ep-info-card__icon {
+  font-size: 1.3rem;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.ep-info-card > div {
+  display: flex;
+  flex-direction: column;
+}
+.ep-info-card > div > span {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.ep-info-card > div > strong {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════
+   Salary Info Tab
+   ═══════════════════════════════════════════ */
+
+/* Summary */
+.sal-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.sal-summary__card {
+  flex: 1;
+  min-width: 180px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.sal-summary__card span {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.sal-summary__card strong {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.sal-summary__card small {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.sal-summary__card--info {
+  flex: 0 1 auto;
+  min-width: 140px;
+}
+.sal-summary__card--info strong {
+  font-size: 1rem;
+  color: var(--accent);
+}
+
+/* Grid */
+.sal-grid {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 1.5rem;
+}
+.sal-block {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}
+.sal-block h4 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.85rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 2px solid var(--accent);
+}
+.sal-right {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Table */
+.sal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.sal-table th {
+  text-align: left;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  font-weight: 600;
+  padding: 0.5rem 0.65rem;
+  border-bottom: 1px solid var(--border);
+}
+.sal-table td {
+  padding: 0.75rem 0.65rem;
+  border-bottom: 1px solid var(--border-light);
+  vertical-align: top;
+}
+.sal-table tr:last-child td {
+  border-bottom: none;
+}
+.sal-table td strong {
+  display: block;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.15rem;
+}
+.sal-table__desc {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  max-width: 320px;
+}
+.sal-table__amt {
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  text-align: right;
+}
+.sal-table__pct {
+  white-space: nowrap;
+  color: var(--accent);
+  font-weight: 600;
+  text-align: right;
+}
+
+/* ── Security Tab ── */
+.ep-security {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .ep-banner { flex-direction: column; gap: 1.25rem; }
+  .ep-banner__right { width: 100%; }
+  .ep-resume { grid-template-columns: 1fr; }
+  .sal-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .ep-banner { padding: 1.25rem; }
+  .ep-banner__avatar { width: 60px; height: 60px; font-size: 1.2rem; }
+  .ep-tabs__btn { padding: 0.7rem 1rem; font-size: 0.8rem; }
+  .ep-info-grid { grid-template-columns: 1fr; }
+  .sal-summary { flex-direction: column; }
+}

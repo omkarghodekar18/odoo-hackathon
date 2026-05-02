@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import API from '../api';
 import toast from 'react-hot-toast';
@@ -28,6 +29,7 @@ function statusLabel(status) {
 
 export default function Employees() {
   const { user, company, hasRole } = useAuth();
+  const navigate = useNavigate();
   const [employees, setEmployees] = useState([]);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -167,7 +169,7 @@ export default function Employees() {
           <div
             key={emp.id}
             className="emp-card"
-            onClick={() => setViewEmployee(emp)}
+            onClick={() => hasRole('admin', 'payroll_officer') ? navigate(`/employees/${emp.id}`) : setViewEmployee(emp)}
             tabIndex={0}
             role="button"
             aria-label={`View ${emp.first_name} ${emp.last_name}`}
