@@ -67,6 +67,7 @@ export default function Topbar({ onMenuClick }) {
       await API.post('/attendance/login');
       toast.success('Checked in successfully!');
       setIsCheckedIn(true);
+      window.dispatchEvent(new Event('attendance-updated'));
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Check in failed');
     } finally { setCheckLoading(false); }
@@ -78,6 +79,7 @@ export default function Topbar({ onMenuClick }) {
       await API.post('/attendance/logout');
       toast.success('Checked out successfully!');
       setIsCheckedIn(false);
+      window.dispatchEvent(new Event('attendance-updated'));
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Check out failed');
     } finally { setCheckLoading(false); }

@@ -1,25 +1,23 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import API from '../api';
-import toast from 'react-hot-toast';
 import {
   HiOutlineClock,
   HiOutlineLogout,
   HiOutlineLogin,
   HiOutlineCalendar,
-  HiOutlineChevronDown,
-  HiOutlineChevronUp,
   HiOutlineRefresh,
+  HiOutlineCheckCircle,
 } from 'react-icons/hi';
 
 /* ─────────────────────────────────── helpers ──────────────────────────────── */
 
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 function fmtTime(isoStr) {
   if (!isoStr) return '—';
   const d = new Date(isoStr);
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
 function fmtDate(dateStr) {
@@ -28,15 +26,8 @@ function fmtDate(dateStr) {
   return d.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function fmtDuration(minutes) {
-  if (minutes == null) return '—';
-  const h = Math.floor(minutes / 60);
-  const m = Math.round(minutes % 60);
-  return `${h}h ${m}m`;
-}
-
 function fmtHours(hours) {
-  if (hours == null) return '0h 0m';
+  if (hours == null || hours === 0) return '0h 0m';
   const h = Math.floor(hours);
   const m = Math.round((hours - h) * 60);
   return `${h}h ${m}m`;
@@ -62,71 +53,43 @@ function statusLabel(s) {
   return map[s] || s;
 }
 
-/* Live elapsed-time hook for an active session */
-function useElapsed(loginTimeISO) {
-  const [elapsed, setElapsed] = useState('');
+/** Compute status from total hours (including lunch) */
+function computeStatus(totalHours) {
+  if (totalHours >= 8) return 'present';
+  if (totalHours >= 4) return 'half_day';
+  return 'absent';
+}
+
+/* Live working-hours hook: recalculates total hours every second when checked in */
+function useLiveHours(checkInTimeISO, serverRawHours, isActive) {
+  const [liveRawHours, setLiveRawHours] = useState(serverRawHours || 0);
   const rafRef = useRef(null);
 
   useEffect(() => {
-    if (!loginTimeISO) { setElapsed(''); return; }
-    const loginMs = new Date(loginTimeISO).getTime();
+    if (!isActive || !checkInTimeISO) {
+      setLiveRawHours(serverRawHours || 0);
+      return;
+    }
 
+    // When active, compute elapsed from check-in time + any previous completed session hours
+    // serverRawHours already includes elapsed at time of API call, but we want live updates
     const tick = () => {
-      const diffMs = Date.now() - loginMs;
-      const h = Math.floor(diffMs / 3600000);
-      const m = Math.floor((diffMs % 3600000) / 60000);
-      const s = Math.floor((diffMs % 60000) / 1000);
-      setElapsed(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`);
+      const now = Date.now();
+      const checkInMs = new Date(checkInTimeISO).getTime();
+      const elapsedHours = (now - checkInMs) / 3600000;
+      // serverRawHours includes the active session elapsed at request time
+      // We need the base hours (completed sessions only) + live elapsed
+      // The server sends raw_working_hours which includes current elapsed
+      // So we just recompute from check-in time for the active session
+      // plus any completed session time (which is serverRawHours minus server-calculated elapsed)
+      setLiveRawHours(Math.max(elapsedHours, 0));
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [loginTimeISO]);
+  }, [checkInTimeISO, serverRawHours, isActive]);
 
-  return elapsed;
-}
-
-/* ─────────────────────────────────── subcomponents ──────────────────────────── */
-
-function SessionsAccordion({ sessions }) {
-  const [open, setOpen] = useState(false);
-  if (!sessions || sessions.length === 0) return null;
-
-  return (
-    <div className="sessions-accordion">
-      <button
-        className="sessions-accordion__toggle"
-        onClick={() => setOpen(o => !o)}
-      >
-        <span>{sessions.length} session{sessions.length !== 1 ? 's' : ''} today</span>
-        {open ? <HiOutlineChevronUp /> : <HiOutlineChevronDown />}
-      </button>
-      {open && (
-        <div className="sessions-accordion__body">
-          {sessions.map((s, i) => (
-            <div key={s.id} className="session-row">
-              <span className="session-row__index">#{i + 1}</span>
-              <span className="session-row__time">
-                <HiOutlineLogin style={{ color: 'var(--color-success)' }} />
-                {fmtTime(s.login_time)}
-              </span>
-              <span className="session-row__arrow">→</span>
-              <span className="session-row__time">
-                <HiOutlineLogout style={{ color: s.logout_time ? 'var(--color-warning)' : '#94a3b8' }} />
-                {s.logout_time ? fmtTime(s.logout_time) : <em>active</em>}
-              </span>
-              <span className="session-row__dur">
-                {s.duration_minutes != null ? fmtDuration(s.duration_minutes) : '…'}
-              </span>
-              {s.is_auto_closed && (
-                <span className="badge badge--warning" style={{ fontSize: '0.65rem' }}>auto-closed</span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  return liveRawHours;
 }
 
 /* ─────────────────────────────────── main component ──────────────────────────── */
@@ -136,14 +99,10 @@ export default function Attendance() {
   const [todayStatus, setTodayStatus] = useState(null);
   const [records, setRecords] = useState([]);
   const [allRecords, setAllRecords] = useState([]);
-  const [expandedRows, setExpandedRows] = useState({});
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
   const isEmployee = user.role === 'employee';
-
-  const elapsed = useElapsed(todayStatus?.active_login_time || null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -165,39 +124,38 @@ export default function Attendance() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const handleLogin = async () => {
-    setActionLoading(true);
+  const handleCheckIn = async () => {
     try {
       await API.post('/attendance/login');
-      toast.success('Session started — you are now clocked in!');
-      fetchData();
+      window.dispatchEvent(new Event('attendance-updated'));
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to start session');
-    } finally {
-      setActionLoading(false);
+      console.error(err);
     }
   };
 
-  const handleLogout = async () => {
-    setActionLoading(true);
+  const handleCheckOut = async () => {
     try {
       await API.post('/attendance/logout');
-      toast.success('Session ended — clocked out successfully!');
-      fetchData();
+      window.dispatchEvent(new Event('attendance-updated'));
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to end session');
-    } finally {
-      setActionLoading(false);
+      console.error(err);
     }
   };
 
-  const toggleRow = (id) => setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
+  // Re-fetch when the user checks in/out from navbar
+  useEffect(() => {
+    const handler = () => fetchData();
+    window.addEventListener('attendance-updated', handler);
+    return () => window.removeEventListener('attendance-updated', handler);
+  }, [fetchData]);
 
   if (loading) return <div className="page-loader"><div className="loading-spinner" /></div>;
 
-  const summary = todayStatus?.summary;
   const isActive = todayStatus?.is_logged_in;
-  const sessions = todayStatus?.sessions || [];
+  const checkInTime = todayStatus?.check_in_time;
+  const checkOutTime = todayStatus?.check_out_time;
+  const serverRawHours = todayStatus?.raw_working_hours || 0;
+  const hasWorkedToday = !!checkInTime;
 
   return (
     <div className="page">
@@ -217,74 +175,16 @@ export default function Attendance() {
         </div>
       </div>
 
-      {/* ── Today's panel ── */}
-      <div className={`attendance-action-card ${isActive ? 'attendance-action-card--active' : ''}`}>
-        <div className="attendance-action-card__info">
-          <div className="attendance-action-card__date">
-            <HiOutlineCalendar />
-            <span>{new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-          </div>
-
-          {/* Live timer when active */}
-          {isActive && (
-            <div className="attendance-timer">
-              <span className="attendance-timer__label">Current session</span>
-              <span className="attendance-timer__clock">{elapsed || '00:00:00'}</span>
-              <span className="attendance-timer__since">since {fmtTime(todayStatus.active_login_time)}</span>
-            </div>
-          )}
-
-          {/* Daily stats */}
-          <div className="attendance-stats-row">
-            <div className="attendance-stat">
-              <span className="attendance-stat__val">{fmtHours(summary?.total_hours)}</span>
-              <span className="attendance-stat__lbl">Total Today</span>
-            </div>
-            <div className="attendance-stat">
-              <span className="attendance-stat__val">{sessions.length}</span>
-              <span className="attendance-stat__lbl">Sessions</span>
-            </div>
-            <div className="attendance-stat">
-              {summary
-                ? <span className={statusClass(summary.status)}>{statusLabel(summary.status)}</span>
-                : <span className="badge badge--secondary">No Record</span>
-              }
-              <span className="attendance-stat__lbl">Status</span>
-            </div>
-          </div>
-
-          {/* Session accordion */}
-          <SessionsAccordion sessions={sessions} />
-        </div>
-
-        {/* Action buttons */}
-        <div className="attendance-action-card__btns">
-          {!isActive ? (
-            <button
-              className="btn btn--success btn--lg"
-              onClick={handleLogin}
-              disabled={actionLoading}
-            >
-              <HiOutlineLogin />
-              {actionLoading ? 'Starting…' : 'Clock In'}
-            </button>
-          ) : (
-            <button
-              className="btn btn--warning btn--lg"
-              onClick={handleLogout}
-              disabled={actionLoading}
-            >
-              <HiOutlineLogout />
-              {actionLoading ? 'Ending…' : 'Clock Out'}
-            </button>
-          )}
-          <p className="attendance-action-card__hint">
-            {isActive
-              ? 'You are currently clocked in. Clock out when done.'
-              : 'Click Clock In to start tracking your work session.'}
-          </p>
-        </div>
-      </div>
+      {/* ── Today's Info Card ── */}
+      <TodayInfoCard
+        isActive={isActive}
+        checkInTime={checkInTime}
+        checkOutTime={checkOutTime}
+        serverRawHours={serverRawHours}
+        hasWorkedToday={hasWorkedToday}
+        onCheckIn={handleCheckIn}
+        onCheckOut={handleCheckOut}
+      />
 
       {/* ── Status legend ── */}
       <div className="attendance-legend">
@@ -313,79 +213,134 @@ export default function Attendance() {
             <tr>
               {!isEmployee && <><th>Employee</th><th>Code</th></>}
               <th>Date</th>
+              <th>Check In</th>
+              <th>Check Out</th>
               <th>Total Hours</th>
-              <th>Sessions</th>
               <th>Status</th>
-              <th></th>
             </tr>
           </thead>
           <tbody>
             {(isEmployee ? records : allRecords).map(r => (
-              <>
-                <tr key={r.id} className="table-row--clickable" onClick={() => !isEmployee && toggleRow(r.id)}>
-                  {!isEmployee && (
-                    <>
-                      <td><strong>{r.employee_name}</strong></td>
-                      <td><code>{r.emp_code}</code></td>
-                    </>
-                  )}
-                  <td>{fmtDate(r.date)}</td>
-                  <td>
-                    <span className="hours-badge">{fmtHours(r.total_hours)}</span>
-                  </td>
-                  <td>
-                    {isEmployee
-                      ? <span className="sessions-count">{r.sessions?.length ?? '—'}</span>
-                      : <span className="sessions-count">{r.sessions?.length ?? '—'}</span>
-                    }
-                  </td>
-                  <td><span className={statusClass(r.status)}>{statusLabel(r.status)}</span></td>
-                  <td>
-                    {!isEmployee && (
-                      <button
-                        className="btn btn--ghost btn--xs"
-                        onClick={e => { e.stopPropagation(); toggleRow(r.id); }}
-                      >
-                        {expandedRows[r.id] ? <HiOutlineChevronUp /> : <HiOutlineChevronDown />}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-                {/* Session drill-down row for admins */}
-                {!isEmployee && expandedRows[r.id] && r.sessions?.length > 0 && (
-                  <tr key={`${r.id}-sessions`} className="session-drill-row">
-                    <td colSpan={7}>
-                      <div className="session-drill-body">
-                        {r.sessions.map((s, i) => (
-                          <div key={s.id} className="session-row">
-                            <span className="session-row__index">#{i + 1}</span>
-                            <span className="session-row__time">
-                              <HiOutlineLogin style={{ color: 'var(--color-success)' }} />
-                              {fmtTime(s.login_time)}
-                            </span>
-                            <span className="session-row__arrow">→</span>
-                            <span className="session-row__time">
-                              <HiOutlineLogout style={{ color: s.logout_time ? 'var(--color-warning)' : '#94a3b8' }} />
-                              {s.logout_time ? fmtTime(s.logout_time) : <em>still open</em>}
-                            </span>
-                            <span className="session-row__dur">
-                              {s.duration_minutes != null ? fmtDuration(s.duration_minutes) : '…'}
-                            </span>
-                            {s.is_auto_closed && (
-                              <span className="badge badge--warning" style={{ fontSize: '0.65rem' }}>auto-closed</span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
+              <tr key={r.id}>
+                {!isEmployee && (
+                  <>
+                    <td><strong>{r.employee_name}</strong></td>
+                    <td><code>{r.emp_code}</code></td>
+                  </>
                 )}
-              </>
+                <td>{fmtDate(r.date)}</td>
+                <td>
+                  <span className="checkin-time">{fmtTime(r.check_in_time)}</span>
+                </td>
+                <td>
+                  <span className="checkout-time">{fmtTime(r.check_out_time)}</span>
+                </td>
+                <td>
+                  <span className="hours-badge">{fmtHours(r.total_hours)}</span>
+                </td>
+                <td><span className={statusClass(r.status)}>{statusLabel(r.status)}</span></td>
+              </tr>
             ))}
           </tbody>
         </table>
         {(isEmployee ? records : allRecords).length === 0 && (
           <div className="empty-state"><p>No attendance records found for the selected period</p></div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────── Today Info Card (display only) ─────────────────────── */
+
+function TodayInfoCard({ isActive, checkInTime, checkOutTime, serverRawHours, hasWorkedToday, onCheckIn, onCheckOut }) {
+  // Live-compute working hours when checked in
+  const liveRawHours = useLiveHours(
+    isActive ? checkInTime : null,
+    serverRawHours,
+    isActive
+  );
+
+  const rawHours = isActive ? liveRawHours : serverRawHours;
+  const totalHours = rawHours >= 4 ? rawHours + 1.0 : rawHours;
+  const liveStatus = hasWorkedToday ? computeStatus(totalHours) : null;
+
+  return (
+    <div className={`attendance-today-card ${isActive ? 'attendance-today-card--active' : ''} ${checkOutTime ? 'attendance-today-card--done' : ''}`}>
+      <div className="attendance-today-card__left">
+        {/* Date */}
+        <div className="attendance-today-card__date">
+          <HiOutlineCalendar />
+          <span>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
+        </div>
+
+      {/* Working Hours Summary */}
+      <div className="attendance-hours-summary">
+        <div className="attendance-hours-summary__main">
+          <HiOutlineClock className="attendance-hours-summary__icon" />
+          <div>
+            <span className="attendance-hours-summary__value">{fmtHours(totalHours)}</span>
+            <span className="attendance-hours-summary__label">Total Working Hours</span>
+          </div>
+        </div>
+        {rawHours >= 4 && (
+          <div className="attendance-hours-summary__breakdown">
+            <span className="attendance-hours-summary__raw">{fmtHours(rawHours)} worked</span>
+            <span className="attendance-hours-summary__lunch">+ 1h lunch break</span>
+          </div>
+        )}
+      </div>
+
+      {/* Check-in / Check-out / Status row */}
+      <div className="attendance-times-row">
+        <div className="attendance-time-block">
+          <HiOutlineLogin className="attendance-time-block__icon attendance-time-block__icon--in" />
+          <div>
+            <span className="attendance-time-block__label">Check In</span>
+            <span className="attendance-time-block__value">{checkInTime ? fmtTime(checkInTime) : '—'}</span>
+          </div>
+        </div>
+        <div className="attendance-time-block__separator" />
+        <div className="attendance-time-block">
+          <HiOutlineLogout className="attendance-time-block__icon attendance-time-block__icon--out" />
+          <div>
+            <span className="attendance-time-block__label">Check Out</span>
+            <span className="attendance-time-block__value">
+              {checkOutTime ? fmtTime(checkOutTime) : (isActive ? 'In Progress' : '—')}
+            </span>
+          </div>
+        </div>
+        <div className="attendance-time-block__separator" />
+        <div className="attendance-time-block">
+          <HiOutlineCheckCircle className="attendance-time-block__icon attendance-time-block__icon--status" />
+          <div>
+            <span className="attendance-time-block__label">Status</span>
+            {liveStatus
+              ? <span className={statusClass(liveStatus)}>{statusLabel(liveStatus)}</span>
+              : <span className="badge badge--secondary">No Record</span>
+            }
+          </div>
+        </div>
+      </div>
+
+        {/* Active indicator */}
+        {isActive && (
+          <div className="attendance-live-indicator">
+            <div className="attendance-live-indicator__pulse" />
+            <span>You are currently working — hours updating live</span>
+          </div>
+        )}
+      </div>
+
+      {/* Action Button */}
+      <div className="attendance-today-card__right">
+        {isActive && (
+          <button
+            className="btn btn--warning btn--lg attendance-check-btn"
+            onClick={onCheckOut}
+          >
+            <HiOutlineLogout /> Check Out
+          </button>
         )}
       </div>
     </div>

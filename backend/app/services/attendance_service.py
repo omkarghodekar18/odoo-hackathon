@@ -33,7 +33,7 @@ from app.models.leave import LeaveRequest, LeaveStatus
 # ---------------------------------------------------------------------------
 
 def _utcnow() -> datetime:
-    return datetime.utcnow()
+    return datetime.now()
 
 
 def _to_local(dt: Optional[datetime]) -> Optional[datetime]:
@@ -91,6 +91,10 @@ def _recompute_daily_summary(db: DBSession, employee_id: int, target_date: date)
 
     total_minutes = sum(s.duration_minutes or 0.0 for s in sessions)
     total_hours = total_minutes / 60.0
+
+    # Add +1 hour lunch break when employee has worked at least 4 hours
+    if total_hours >= 4:
+        total_hours += 1.0
 
     on_leave = _has_approved_leave(db, employee_id, target_date)
     status = _compute_status(total_hours, on_leave)
@@ -278,9 +282,12 @@ def logout_session(
 def get_today_status(db: DBSession, employee_id: int) -> dict:
     """
     Returns the employee's attendance state for today:
-      - sessions list
-      - daily summary (total_hours, status)
-      - is_logged_in flag
+      - check_in_time: when the workday started (first session login)
+      - check_out_time: when the workday ended (last session logout, None if still active)
+      - raw_working_hours: actual hours worked (without lunch)
+      - total_working_hours: hours + 1hr lunch break (if >= 4hrs worked)
+      - status: present / half_day / absent / on_leave
+      - is_logged_in: whether there's an active session
     """
     today = date.today()
     sessions = db.query(AttendanceSession).filter(
@@ -295,10 +302,33 @@ def get_today_status(db: DBSession, employee_id: int) -> dict:
 
     open_session = next((s for s in sessions if s.logout_time is None), None)
 
+    # Check-in time = first session's login time
+    check_in_time = sessions[0].login_time.isoformat() if sessions else None
+
+    # Check-out time = last completed session's logout time (None if still active)
+    last_completed = [s for s in sessions if s.logout_time is not None]
+    check_out_time = last_completed[-1].logout_time.isoformat() if last_completed and not open_session else None
+
+    # Compute raw working hours from all completed sessions + live elapsed
+    total_minutes = sum(s.duration_minutes or 0.0 for s in sessions if s.logout_time is not None)
+    # If there's an active session, add elapsed time so far
+    if open_session:
+        now = _utcnow()
+        elapsed = _compute_duration_minutes(open_session.login_time, now)
+        total_minutes += elapsed
+    raw_hours = total_minutes / 60.0
+    # Add +1 hour lunch break if worked >= 4 hours
+    total_hours = raw_hours + 1.0 if raw_hours >= 4 else raw_hours
+
     return {
         "is_logged_in": open_session is not None,
         "active_session_id": open_session.id if open_session else None,
         "active_login_time": open_session.login_time.isoformat() if open_session else None,
+        "check_in_time": check_in_time,
+        "check_out_time": check_out_time,
+        "raw_working_hours": round(raw_hours, 2),
+        "total_working_hours": round(total_hours, 2),
+        "status": summary.status.value if summary else ("absent" if not sessions else "absent"),
         "sessions": [_session_to_dict(s) for s in sessions],
         "summary": _summary_to_dict(summary) if summary else None,
     }
@@ -315,7 +345,25 @@ def get_employee_attendance(
     if year:
         query = query.filter(func.strftime('%Y', Attendance.date) == str(year))
     records = query.order_by(Attendance.date.desc()).all()
-    return [_summary_to_dict(r) for r in records]
+
+    result = []
+    for r in records:
+        # Get sessions for this date to extract check-in/check-out times
+        day_sessions = db.query(AttendanceSession).filter(
+            AttendanceSession.employee_id == employee_id,
+            AttendanceSession.date == r.date,
+        ).order_by(AttendanceSession.login_time).all()
+
+        check_in = day_sessions[0].login_time.isoformat() if day_sessions else None
+        completed = [s for s in day_sessions if s.logout_time is not None]
+        check_out = completed[-1].logout_time.isoformat() if completed else None
+
+        entry = _summary_to_dict(r)
+        entry["check_in_time"] = check_in
+        entry["check_out_time"] = check_out
+        result.append(entry)
+
+    return result
 
 
 def get_sessions_for_date(
