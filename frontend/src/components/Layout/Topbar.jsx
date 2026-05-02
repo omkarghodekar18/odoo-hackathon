@@ -5,10 +5,10 @@ export default function Topbar({ onMenuClick }) {
   const { user } = useAuth();
 
   const roleColors = {
-    admin: '#f43f5e',
+    admin: '#ef4444',
     hr_officer: '#8b5cf6',
     payroll_officer: '#f59e0b',
-    employee: '#3b82f6',
+    employee: '#0d9488',
   };
 
   return (

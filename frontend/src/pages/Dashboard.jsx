@@ -78,10 +78,10 @@ export default function Dashboard() {
           <h3>Monthly Attendance</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={attendanceChart}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="month" stroke="#64748b" fontSize={12} />
-              <YAxis stroke="#64748b" fontSize={12} />
-              <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px', color: '#f1f5f9' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} />
+              <YAxis stroke="#94a3b8" fontSize={12} />
+              <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#1a202c' }} />
               <Bar dataKey="present" fill="#10b981" radius={[4, 4, 0, 0]} />
               <Bar dataKey="absent" fill="#f43f5e" radius={[4, 4, 0, 0]} />
               <Bar dataKey="on_leave" fill="#f59e0b" radius={[4, 4, 0, 0]} />
@@ -98,7 +98,7 @@ export default function Dashboard() {
                   <Cell key={i} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px', color: '#f1f5f9' }} />
+              <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#1a202c' }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -107,10 +107,10 @@ export default function Dashboard() {
           <h3>Department Distribution</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={deptStats} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis type="number" stroke="#64748b" fontSize={12} />
-              <YAxis dataKey="department" type="category" stroke="#64748b" fontSize={12} width={100} />
-              <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px', color: '#f1f5f9' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis type="number" stroke="#94a3b8" fontSize={12} />
+              <YAxis dataKey="department" type="category" stroke="#94a3b8" fontSize={12} width={100} />
+              <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#1a202c' }} />
               <Bar dataKey="count" radius={[0, 4, 4, 0]}>
                 {deptStats.map((_, i) => (
                   <Cell key={i} fill={DEPT_COLORS[i % DEPT_COLORS.length]} />
