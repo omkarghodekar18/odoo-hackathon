@@ -1,22 +1,41 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import API from '../api';
 import toast from 'react-hot-toast';
 import {
   HiOutlineSearch, HiOutlinePlus, HiOutlinePencil, HiOutlineTrash,
   HiOutlineClipboardCopy, HiOutlineCheckCircle, HiOutlineKey,
-  HiOutlineMail, HiOutlineIdentification,
+  HiOutlineMail, HiOutlineIdentification, HiOutlineX,
+  HiOutlineOfficeBuilding, HiOutlinePhone, HiOutlineCalendar,
+  HiOutlineCurrencyDollar, HiOutlineBriefcase,
 } from 'react-icons/hi';
 
+/* ─── status helpers ─── */
+function statusDotClass(status) {
+  switch (status) {
+    case 'present': return 'status-dot status-dot--present';
+    case 'on_leave': return 'status-dot status-dot--leave';
+    default: return 'status-dot status-dot--absent';
+  }
+}
+function statusLabel(status) {
+  switch (status) {
+    case 'present': return 'Present';
+    case 'on_leave': return 'On Leave';
+    default: return 'Absent';
+  }
+}
+
 export default function Employees() {
-  const { user, hasRole } = useAuth();
+  const { user, company, hasRole } = useAuth();
   const [employees, setEmployees] = useState([]);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [credentials, setCredentials] = useState(null); // { emp_code, email, password }
+  const [credentials, setCredentials] = useState(null);
   const [copied, setCopied] = useState({});
+  const [viewEmployee, setViewEmployee] = useState(null); // read-only detail
 
   const [form, setForm] = useState({
     first_name: '', last_name: '', department: '', designation: '',
@@ -29,9 +48,15 @@ export default function Employees() {
 
   const fetchEmployees = async () => {
     try {
-      const res = await API.get('/employees/');
+      const res = await API.get('/employees/status/all');
       setEmployees(res.data);
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      // Fallback to regular list without status
+      try {
+        const res = await API.get('/employees/');
+        setEmployees(res.data.map(e => ({ ...e, attendance_status: 'absent' })));
+      } catch (e) { console.error(e); }
+    }
     finally { setLoading(false); }
   };
 
@@ -59,7 +84,6 @@ export default function Employees() {
         toast.success('Employee created');
         setShowModal(false);
         fetchEmployees();
-        // Show credential card
         setCredentials({
           emp_code: res.data.emp_code,
           email: res.data.user_email,
@@ -75,11 +99,13 @@ export default function Employees() {
     try {
       await API.delete(`/employees/${id}`);
       toast.success('Employee deleted');
+      setViewEmployee(null);
       fetchEmployees();
     } catch (err) { toast.error(err.response?.data?.detail || 'Delete failed'); }
   };
 
   const openEdit = (emp) => {
+    setViewEmployee(null);
     setEditing(emp);
     setForm({
       first_name: emp.first_name, last_name: emp.last_name,
@@ -122,56 +148,116 @@ export default function Employees() {
 
   return (
     <div className="page">
+      {/* ── Header ── */}
       <div className="page-header">
-        <h2>Employee Directory</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <h2>{company?.name || 'Employees'}</h2>
+          {canEdit && <button className="btn btn--primary btn--sm" onClick={openNew}><HiOutlinePlus /> NEW</button>}
+        </div>
         <div className="page-header__actions">
           <div className="search-box">
             <HiOutlineSearch />
             <input placeholder="Search employees..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-          {canEdit && <button className="btn btn--primary" onClick={openNew}><HiOutlinePlus /> Add Employee</button>}
         </div>
       </div>
 
-      <div className="table-card">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>ID Code</th><th>Name</th><th>Department</th>
-              <th>Designation</th><th>Email</th><th>Salary</th>
-              {canEdit && <th>Actions</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(emp => (
-              <tr key={emp.id}>
-                <td><span className="badge badge--info">{emp.emp_code}</span></td>
-                <td>
-                  <div className="user-cell">
-                    <div className="user-cell__avatar">{emp.first_name[0]}{emp.last_name[0]}</div>
-                    {emp.first_name} {emp.last_name}
-                  </div>
-                </td>
-                <td>{emp.department}</td>
-                <td>{emp.designation}</td>
-                <td>{emp.user_email}</td>
-                <td>₹{emp.basic_salary?.toLocaleString()}</td>
-                {canEdit && (
-                  <td>
-                    <div className="action-btns">
-                      <button className="icon-btn" onClick={() => openEdit(emp)}><HiOutlinePencil /></button>
-                      {user.role === 'admin' && (
-                        <button className="icon-btn icon-btn--danger" onClick={() => handleDelete(emp.id)}><HiOutlineTrash /></button>
-                      )}
-                    </div>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {filtered.length === 0 && <div className="empty-state"><p>No employees found</p></div>}
+      {/* ── Card Grid ── */}
+      <div className="emp-grid">
+        {filtered.map(emp => (
+          <div
+            key={emp.id}
+            className="emp-card"
+            onClick={() => setViewEmployee(emp)}
+            tabIndex={0}
+            role="button"
+            aria-label={`View ${emp.first_name} ${emp.last_name}`}
+          >
+            <span className={statusDotClass(emp.attendance_status)} title={statusLabel(emp.attendance_status)} />
+            <div className="emp-card__avatar">
+              {emp.first_name[0]}{emp.last_name[0]}
+            </div>
+            <div className="emp-card__name">{emp.first_name} {emp.last_name}</div>
+            <div className="emp-card__role">{emp.designation}</div>
+            <div className="emp-card__dept">{emp.department}</div>
+          </div>
+        ))}
+        {filtered.length === 0 && (
+          <div className="empty-state" style={{ gridColumn: '1 / -1' }}><p>No employees found</p></div>
+        )}
       </div>
+
+      {/* ── Status Legend ── */}
+      <div className="emp-legend">
+        <div className="emp-legend__item"><span className="status-dot status-dot--present" /> Green: Present in the office</div>
+        <div className="emp-legend__item"><span className="status-dot status-dot--leave" /> Red: On leave</div>
+        <div className="emp-legend__item"><span className="status-dot status-dot--absent" /> Yellow: Absent (no time off applied)</div>
+      </div>
+
+      {/* ── View Detail Modal (read-only) ── */}
+      {viewEmployee && (
+        <div className="modal-overlay" onClick={() => setViewEmployee(null)}>
+          <div className="modal emp-detail-modal" onClick={e => e.stopPropagation()}>
+            <div className="emp-detail-modal__header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div className="emp-detail-modal__avatar">
+                  {viewEmployee.first_name[0]}{viewEmployee.last_name[0]}
+                </div>
+                <div>
+                  <h3 style={{ margin: 0 }}>{viewEmployee.first_name} {viewEmployee.last_name}</h3>
+                  <span className={statusDotClass(viewEmployee.attendance_status)} style={{ display: 'inline-block', marginRight: '0.4rem' }} />
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{statusLabel(viewEmployee.attendance_status)}</span>
+                </div>
+              </div>
+              <button className="icon-btn" onClick={() => setViewEmployee(null)}><HiOutlineX /></button>
+            </div>
+
+            <div className="emp-detail-modal__body">
+              <div className="emp-detail-row">
+                <HiOutlineIdentification />
+                <div><span>Employee Code</span><strong>{viewEmployee.emp_code}</strong></div>
+              </div>
+              <div className="emp-detail-row">
+                <HiOutlineMail />
+                <div><span>Email</span><strong>{viewEmployee.user_email || '—'}</strong></div>
+              </div>
+              <div className="emp-detail-row">
+                <HiOutlineOfficeBuilding />
+                <div><span>Department</span><strong>{viewEmployee.department}</strong></div>
+              </div>
+              <div className="emp-detail-row">
+                <HiOutlineBriefcase />
+                <div><span>Designation</span><strong>{viewEmployee.designation}</strong></div>
+              </div>
+              <div className="emp-detail-row">
+                <HiOutlineCalendar />
+                <div><span>Date of Joining</span><strong>{viewEmployee.date_of_joining}</strong></div>
+              </div>
+              <div className="emp-detail-row">
+                <HiOutlineCurrencyDollar />
+                <div><span>Basic Salary</span><strong>₹{viewEmployee.basic_salary?.toLocaleString()}</strong></div>
+              </div>
+              <div className="emp-detail-row">
+                <HiOutlinePhone />
+                <div><span>Phone</span><strong>{viewEmployee.phone || '—'}</strong></div>
+              </div>
+            </div>
+
+            {canEdit && (
+              <div className="modal__actions">
+                {user.role === 'admin' && (
+                  <button className="btn btn--ghost" style={{ color: 'var(--danger)' }} onClick={() => handleDelete(viewEmployee.id)}>
+                    <HiOutlineTrash /> Delete
+                  </button>
+                )}
+                <button className="btn btn--primary" onClick={() => openEdit(viewEmployee)}>
+                  <HiOutlinePencil /> Edit
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Add/Edit Modal ── */}
       {showModal && (

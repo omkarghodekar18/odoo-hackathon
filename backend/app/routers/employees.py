@@ -1,7 +1,7 @@
 import random
 import string
 import re
-from datetime import date
+from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
@@ -9,7 +9,8 @@ from app.database import get_db
 from app.models.user import User, UserRole
 from app.models.employee import Employee
 from app.models.company import Company
-from app.models.leave import LeaveType, LeaveBalance
+from app.models.leave import LeaveType, LeaveBalance, LeaveRequest, LeaveStatus
+from app.models.attendance import AttendanceSession
 from app.schemas.employee import (
     EmployeeCreate, EmployeeUpdate, EmployeeResponse,
     EmployeeWithUser, EmployeeCreatedResponse
@@ -108,6 +109,69 @@ def list_employees(
         ))
     return result
 
+
+@router.get("/status/all")
+def get_all_employee_status(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Get all employees with their current attendance status for today.
+    Returns: present (active session / checked-in), on_leave (approved leave), absent (neither).
+    """
+    today = date.today()
+    employees = db.query(Employee).filter(Employee.company_id == current_user.company_id).all()
+
+    result = []
+    for emp in employees:
+        user = db.query(User).filter(User.id == emp.user_id).first()
+
+        # Check if employee has an active (open) session today
+        active_session = db.query(AttendanceSession).filter(
+            AttendanceSession.employee_id == emp.id,
+            AttendanceSession.date == today,
+            AttendanceSession.logout_time.is_(None),
+        ).first()
+
+        # Check if employee has any session today (even closed)
+        any_session_today = db.query(AttendanceSession).filter(
+            AttendanceSession.employee_id == emp.id,
+            AttendanceSession.date == today,
+        ).first()
+
+        # Check if employee is on approved leave today
+        on_leave = db.query(LeaveRequest).filter(
+            LeaveRequest.employee_id == emp.id,
+            LeaveRequest.status == LeaveStatus.APPROVED,
+            LeaveRequest.start_date <= today,
+            LeaveRequest.end_date >= today,
+        ).first()
+
+        if active_session or any_session_today:
+            attendance_status = "present"
+        elif on_leave:
+            attendance_status = "on_leave"
+        else:
+            attendance_status = "absent"
+
+        result.append({
+            "id": emp.id,
+            "user_id": emp.user_id,
+            "emp_code": emp.emp_code,
+            "first_name": emp.first_name,
+            "last_name": emp.last_name,
+            "department": emp.department,
+            "designation": emp.designation,
+            "date_of_joining": str(emp.date_of_joining),
+            "basic_salary": emp.basic_salary,
+            "phone": emp.phone,
+            "address": emp.address,
+            "user_email": user.email if user else None,
+            "user_role": user.role.value if user else None,
+            "is_active": user.is_active if user else None,
+            "attendance_status": attendance_status,
+        })
+    return result
 
 @router.post("/", response_model=EmployeeCreatedResponse)
 def create_employee(

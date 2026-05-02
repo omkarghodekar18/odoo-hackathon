@@ -37,7 +37,7 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/employees" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
