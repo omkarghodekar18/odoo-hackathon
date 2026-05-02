@@ -44,7 +44,7 @@ a:hover { text-decoration: underline; }
 /* Form Elements */
 .form-group { display: flex; flex-direction: column; gap: 0.35rem; }
 .form-group label { font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); }
-.form-group input, .form-group select, .form-group textarea { background: #fff; border: 1px solid var(--border); color: var(--text-primary); padding: 0.65rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.9rem; font-family: inherit; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; background: #fff; border: 1px solid var(--border); color: var(--text-primary); padding: 0.65rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.9rem; font-family: inherit; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
 .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(13,148,136,0.1); }
 .form-group select { cursor: pointer; }
 .form-group textarea { resize: vertical; }

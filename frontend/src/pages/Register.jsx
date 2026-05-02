@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import logoImg from '../assets/logo.png';
 
 export default function Register() {
   const [form, setForm] = useState({ full_name: '', email: '', password: '', confirm: '', role: 'employee' });
@@ -38,8 +39,8 @@ export default function Register() {
       </div>
       <div className="auth-card">
         <div className="auth-card__header">
-          <div className="auth-card__logo">EP</div>
-          <h1>Create Account</h1>
+          <img src={logoImg} alt="EmPay" style={{ height: 56, margin: '0 auto 1rem', display: 'block' }} />
+          <h1>Sign Up</h1>
           <p>Join EmPay to streamline your HR operations</p>
         </div>
         <form onSubmit={handleSubmit} className="auth-card__form">
