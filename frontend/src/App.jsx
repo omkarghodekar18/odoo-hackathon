@@ -5,6 +5,7 @@ import AppLayout from './components/Layout/AppLayout';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Employees from './pages/Employees';
+import Dashboard from './pages/Dashboard';
 import EmployeeProfile from './pages/EmployeeProfile';
 import Attendance from './pages/Attendance';
 import LeaveManagement from './pages/LeaveManagement';
@@ -27,6 +28,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route element={<AppLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/employees" element={<Employees />} />
             <Route path="/employees/:id" element={<EmployeeProfile />} />
             <Route path="/attendance" element={<Attendance />} />
@@ -37,7 +39,7 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
-          <Route path="*" element={<Navigate to="/employees" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

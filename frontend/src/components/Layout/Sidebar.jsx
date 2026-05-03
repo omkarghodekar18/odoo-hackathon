@@ -8,6 +8,7 @@ import {
 } from 'react-icons/hi';
 
 const navItems = [
+  { path: '/dashboard', label: 'Dashboard', icon: HiOutlineHome, roles: ['admin', 'hr_officer', 'employee', 'payroll_officer'] },
   { path: '/employees', label: 'Employees', icon: HiOutlineUsers, roles: ['admin', 'hr_officer', 'employee', 'payroll_officer'] },
   { path: '/attendance', label: 'Attendance', icon: HiOutlineClipboardCheck, roles: ['admin', 'hr_officer', 'payroll_officer', 'employee'] },
   { path: '/leave', label: 'Time Off', icon: HiOutlineCalendar, roles: ['admin', 'hr_officer', 'payroll_officer', 'employee'] },

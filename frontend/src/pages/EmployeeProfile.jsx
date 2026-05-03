@@ -9,7 +9,7 @@ import {
   HiOutlineIdentification, HiOutlineLocationMarker,
   HiOutlineKey, HiOutlineEye, HiOutlineEyeOff, HiOutlineX,
   HiOutlineLockClosed, HiOutlineShieldCheck, HiOutlinePencil,
-  HiOutlinePlus, HiOutlineStar, HiOutlineSave,
+  HiOutlinePlus, HiOutlineStar, HiOutlineSave, HiOutlineTrash,
 } from 'react-icons/hi';
 
 /* ────────────────────────────────────────────── helpers ── */
@@ -61,6 +61,19 @@ export default function EmployeeProfile() {
   const canEditProfile = hasRole('admin', 'payroll_officer', 'hr_officer');
   const canViewSalary = hasRole('admin', 'payroll_officer');
   const canEditSecurity = hasRole('admin');
+  const canDelete = hasRole('admin');
+
+  /* ──────── Delete Employee ──────── */
+  const handleDelete = async () => {
+    if (!confirm(`Are you sure you want to permanently delete ${emp?.first_name} ${emp?.last_name}? This will remove all their records including attendance, leaves, payslips, and their user account. This action cannot be undone.`)) return;
+    try {
+      await API.delete(`/employees/${id}`);
+      toast.success('Employee deleted successfully');
+      navigate('/employees');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Delete failed');
+    }
+  };
 
   const tabs = [
     { key: 'resume', label: 'Resume' },
@@ -187,27 +200,34 @@ export default function EmployeeProfile() {
         <button className="btn btn--ghost btn--sm" onClick={() => navigate('/employees')}>
           <HiOutlineArrowLeft /> Back
         </button>
-        {canEditProfile && (
-          <button 
-            className="btn btn--primary btn--sm" 
-            onClick={() => {
-              setEditForm({
-                first_name: emp.first_name || '',
-                last_name: emp.last_name || '',
-                department: emp.department || '',
-                designation: emp.designation || '',
-                phone: emp.phone || '',
-                address: emp.address || '',
-                date_of_joining: emp.date_of_joining || '',
-                bio: emp.bio || '',
-                resume: emp.resume || ''
-              });
-              setShowEditModal(true);
-            }}
-          >
-            <HiOutlinePencil /> Edit Profile
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {canDelete && (
+            <button className="btn btn--ghost btn--sm" style={{ color: 'var(--danger)' }} onClick={handleDelete}>
+              <HiOutlineTrash /> Delete
+            </button>
+          )}
+          {canEditProfile && (
+            <button 
+              className="btn btn--primary btn--sm" 
+              onClick={() => {
+                setEditForm({
+                  first_name: emp.first_name || '',
+                  last_name: emp.last_name || '',
+                  department: emp.department || '',
+                  designation: emp.designation || '',
+                  phone: emp.phone || '',
+                  address: emp.address || '',
+                  date_of_joining: emp.date_of_joining || '',
+                  bio: emp.bio || '',
+                  resume: emp.resume || ''
+                });
+                setShowEditModal(true);
+              }}
+            >
+              <HiOutlinePencil /> Edit Profile
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Banner */}

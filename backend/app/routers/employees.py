@@ -540,7 +540,10 @@ def delete_employee(
     current_user: User = Depends(require_roles("admin")),
     db: Session = Depends(get_db)
 ):
-    """Delete employee. Admin only. Scoped to company."""
+    """Delete employee and all related records. Admin only. Scoped to company."""
+    from app.models.payroll import Payslip
+    from app.models.salary_structure import SalaryStructure
+
     emp = db.query(Employee).filter(
         Employee.id == employee_id,
         Employee.company_id == current_user.company_id
@@ -548,7 +551,22 @@ def delete_employee(
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
 
+    # Cascade-delete all related records
+    db.query(AttendanceSession).filter(AttendanceSession.employee_id == emp.id).delete()
+    from app.models.attendance import Attendance
+    db.query(Attendance).filter(Attendance.employee_id == emp.id).delete()
+    db.query(LeaveBalance).filter(LeaveBalance.employee_id == emp.id).delete()
+    db.query(LeaveRequest).filter(LeaveRequest.employee_id == emp.id).delete()
+    db.query(Payslip).filter(Payslip.employee_id == emp.id).delete()
+    db.query(SalaryStructure).filter(SalaryStructure.employee_id == emp.id).delete()
+
+    # Delete the user account
+    user = db.query(User).filter(User.id == emp.user_id).first()
+
     db.delete(emp)
+    if user:
+        db.delete(user)
+
     db.commit()
     return {"message": "Employee deleted"}
 
