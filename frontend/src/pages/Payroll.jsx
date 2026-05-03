@@ -215,7 +215,7 @@ export default function Payroll() {
                   {(d.worked_days || []).map((w,i) => (
                     <tr key={i}>
                       <td><strong>{w.name}</strong></td>
-                      <td style={{textAlign:'right'}}>{w.days.toFixed(2)} {w.name === 'Attendance' ? `(${Math.round(w.days)} working days in week)` : w.name === 'Paid Time Off' ? `(${Math.round(w.days)} Paid leaves/Month)` : ''}</td>
+                      <td style={{textAlign:'right'}}>{w.days.toFixed(2)} {w.name === 'Full Month Salary' ? `(${Math.round(w.days)} working days)` : ''}</td>
                       <td style={{textAlign:'right'}}>₹{w.amount.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
                     </tr>
                   ))}
@@ -227,7 +227,7 @@ export default function Payroll() {
                 </tbody>
               </table>
               <div className="pr-note">
-                Salary is calculated based on the employee's monthly attendance. Paid leaves are included in the total payable days, while unpaid leaves are deducted from the salary.
+                Salary is calculated using the employee's full monthly CTC from their profile. No attendance or leave proration is applied.
               </div>
             </div>
           )}
@@ -547,7 +547,7 @@ export default function Payroll() {
                 </select>
               </div>
             </div>
-            <p style={{color:'#94a3b8',fontSize:'0.875rem'}}>This will generate payslips for all employees based on their attendance and leave records.</p>
+            <p style={{color:'#94a3b8',fontSize:'0.875rem'}}>This will generate payslips for all employees using their full monthly salary from their profile.</p>
             <div className="modal__actions">
               <button className="btn btn--ghost" onClick={() => setShowCreate(false)}>Cancel</button>
               <button className="btn btn--primary" onClick={handleCreate}>Generate Payrun</button>
@@ -573,7 +573,7 @@ export default function Payroll() {
                     ))}
                   </select>
                 </div>
-                <p style={{color:'#94a3b8',fontSize:'0.875rem'}}>A payslip will be generated based on this employee's attendance and salary structure.</p>
+                <p style={{color:'#94a3b8',fontSize:'0.875rem'}}>A payslip will be generated using this employee's full monthly salary from their profile.</p>
               </>
             )}
             <div className="modal__actions">

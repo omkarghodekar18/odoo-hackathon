@@ -65,11 +65,9 @@ export default function Payslips() {
                 <div className="payslip-detail__row payslip-detail__row--net"><span>Net Pay</span><span>₹{selected.net_pay?.toLocaleString()}</span></div>
               </div>
               <div className="payslip-detail__section">
-                <h4>Attendance</h4>
-                <div className="payslip-detail__row"><span>Working Days</span><span>{selected.working_days}</span></div>
-                <div className="payslip-detail__row"><span>Days Present</span><span>{selected.days_present}</span></div>
-                <div className="payslip-detail__row"><span>Paid Leave Days</span><span>{selected.paid_leave_days || 0}</span></div>
-                <div className="payslip-detail__row"><span>Unpaid Leave Days</span><span>{selected.unpaid_leave_days || 0}</span></div>
+                <h4>Salary Info</h4>
+                <div className="payslip-detail__row"><span>Working Days in Month</span><span>{selected.working_days}</span></div>
+                <div className="payslip-detail__row"><span>Salary Basis</span><span>Full Monthly CTC</span></div>
               </div>
             </div>
             <div className="modal__actions"><button className="btn btn--ghost" onClick={() => setSelected(null)}>Close</button></div>

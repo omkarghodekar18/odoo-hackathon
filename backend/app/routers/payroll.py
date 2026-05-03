@@ -316,28 +316,14 @@ def get_payslip_detail(
     _, last_day = calendar.monthrange(payrun.year, payrun.month)
     period = f"01 {MONTH_NAMES[payrun.month-1]} to {last_day} {MONTH_NAMES[payrun.month-1]}"
 
-    # Worked days breakdown
+    # Worked days breakdown — full month, no attendance/leave proration
     worked_days = []
     ctc = emp.basic_salary or 0
-    attendance_amount = round((slip.days_present or 0) / slip.working_days * ctc, 2) if slip.working_days > 0 else 0
     worked_days.append({
-        "name": "Attendance",
-        "days": slip.days_present or 0,
-        "amount": attendance_amount,
+        "name": "Full Month Salary",
+        "days": slip.working_days or 0,
+        "amount": ctc,
     })
-    if (slip.paid_leave_days or 0) > 0:
-        leave_amount = round(slip.paid_leave_days / slip.working_days * ctc, 2) if slip.working_days > 0 else 0
-        worked_days.append({
-            "name": "Paid Time Off",
-            "days": slip.paid_leave_days,
-            "amount": leave_amount,
-        })
-    if (slip.unpaid_leave_days or 0) > 0:
-        worked_days.append({
-            "name": "Unpaid Leave",
-            "days": slip.unpaid_leave_days,
-            "amount": 0,
-        })
 
     # Fetch salary structure percentages
     from app.models.salary_structure import SalaryStructure

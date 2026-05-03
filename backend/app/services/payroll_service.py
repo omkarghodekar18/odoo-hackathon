@@ -3,8 +3,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import date
 from app.models.employee import Employee
-from app.models.attendance import Attendance, AttendanceStatus
-from app.models.leave import LeaveRequest, LeaveStatus, LeaveType, LeaveBalance
 from app.models.payroll import Payrun, Payslip, PayrunStatus, PayslipStatus
 from app.models.salary_structure import SalaryStructure
 
@@ -37,12 +35,9 @@ def _get_or_create_salary_structure(db: Session, employee_id: int) -> SalaryStru
 def calculate_payslip(db: Session, employee: Employee, month: int, year: int) -> dict:
     """Calculate payslip for an employee for a given month/year.
 
-    Salary is calculated based on monthly attendance:
-    - Paid leaves are included in total payable days
-    - Unpaid leaves are deducted from salary
-
-    Uses the employee's SalaryStructure percentages applied to CTC
-    (employee.basic_salary represents monthly CTC).
+    Uses the employee's full monthly salary (basic_salary = monthly CTC)
+    with SalaryStructure percentages applied to break down into components.
+    No attendance or leave proration — plain full salary.
     """
 
     monthly_ctc = employee.basic_salary or 0
@@ -50,7 +45,7 @@ def calculate_payslip(db: Session, employee: Employee, month: int, year: int) ->
     # Get salary structure percentages
     structure = _get_or_create_salary_structure(db, employee.id)
 
-    # Get working days in the month (weekdays only)
+    # Get working days in the month (weekdays only) — for display purposes
     _, total_days = calendar.monthrange(year, month)
     working_days = 0
     for day in range(1, total_days + 1):
@@ -58,56 +53,13 @@ def calculate_payslip(db: Session, employee: Employee, month: int, year: int) ->
         if d.weekday() < 5:  # Monday to Friday
             working_days += 1
 
-    # Count attendance
-    attendance_records = db.query(Attendance).filter(
-        Attendance.employee_id == employee.id,
-        func.extract('month', Attendance.date) == month,
-        func.extract('year', Attendance.date) == year,
-    ).all()
-
-    days_present = sum(1 for a in attendance_records if a.status == AttendanceStatus.PRESENT)
-    half_days = sum(1 for a in attendance_records if a.status == AttendanceStatus.HALF_DAY)
-    days_present += half_days * 0.5
-
-    # Count approved leaves in this month
-    approved_leaves = db.query(LeaveRequest).filter(
-        LeaveRequest.employee_id == employee.id,
-        LeaveRequest.status == LeaveStatus.APPROVED,
-        func.extract('month', LeaveRequest.start_date) == month,
-        func.extract('year', LeaveRequest.start_date) == year,
-    ).all()
-
-    total_leave_days = 0
-    for leave in approved_leaves:
-        delta = (leave.end_date - leave.start_date).days + 1
-        total_leave_days += delta
-
-    # Determine paid vs unpaid leaves
-    # Check leave balances - if employee has remaining balance, leaves are paid
-    leave_balances = db.query(LeaveBalance).filter(
-        LeaveBalance.employee_id == employee.id
-    ).all()
-    total_remaining_balance = sum(lb.remaining for lb in leave_balances)
-
-    # Paid leaves = min(total_leave_days, remaining balance)
-    paid_leave_days = min(total_leave_days, max(total_remaining_balance, 0))
-    unpaid_leave_days = max(total_leave_days - paid_leave_days, 0)
-
-    # Payable days = attendance days + paid leave days
-    payable_days = min(days_present + paid_leave_days, working_days)
-
-    # Calculate earnings using SalaryStructure percentages (pro-rated)
-    if payable_days == 0 and total_leave_days == 0:
-        ratio = 1.0  # Default to full attendance if no data exists (useful for demo/testing)
-    else:
-        ratio = payable_days / working_days if working_days > 0 else 0
-
-    basic = round(monthly_ctc * (structure.basic_pct / 100) * ratio, 2)
-    hra = round(monthly_ctc * (structure.hra_pct / 100) * ratio, 2)
-    standard_allowance = round(monthly_ctc * (structure.standard_allowance_pct / 100) * ratio, 2)
-    performance_bonus = round(monthly_ctc * (structure.performance_bonus_pct / 100) * ratio, 2)
-    lta = round(monthly_ctc * (structure.lta_pct / 100) * ratio, 2)
-    fixed_allowance = round(monthly_ctc * (structure.fixed_allowance_pct / 100) * ratio, 2)
+    # Full salary — no attendance/leave proration
+    basic = round(monthly_ctc * (structure.basic_pct / 100), 2)
+    hra = round(monthly_ctc * (structure.hra_pct / 100), 2)
+    standard_allowance = round(monthly_ctc * (structure.standard_allowance_pct / 100), 2)
+    performance_bonus = round(monthly_ctc * (structure.performance_bonus_pct / 100), 2)
+    lta = round(monthly_ctc * (structure.lta_pct / 100), 2)
+    fixed_allowance = round(monthly_ctc * (structure.fixed_allowance_pct / 100), 2)
 
     gross = round(basic + hra + standard_allowance + performance_bonus + lta + fixed_allowance, 2)
 
@@ -138,10 +90,10 @@ def calculate_payslip(db: Session, employee: Employee, month: int, year: int) ->
         "total_deductions": total_deductions,
         "net_pay": net_pay,
         "working_days": working_days,
-        "days_present": days_present,
-        "leave_days": total_leave_days,
-        "paid_leave_days": paid_leave_days,
-        "unpaid_leave_days": unpaid_leave_days,
+        "days_present": working_days,
+        "leave_days": 0,
+        "paid_leave_days": 0,
+        "unpaid_leave_days": 0,
     }
 
 
